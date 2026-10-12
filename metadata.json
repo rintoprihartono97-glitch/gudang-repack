@@ -1,0 +1,6 @@
+{
+  "name": "GUDANG REPACK",
+  "description": "Sistem informasi manajemen pergudangan GUDANG REPACK untuk keluar masuk barang, kartu stok, dan laporan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
