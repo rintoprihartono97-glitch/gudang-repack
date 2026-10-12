@@ -51,9 +51,6 @@ export const InputBarangMasukView: React.FC = () => {
   const namaInputRefs = React.useRef<any[]>([]);
   const qtyInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
-  // Selected item preview for top banner
-  const activeItemPreview = rows[activeRowIndex]?.item || rows.find(r => r.item)?.item || null;
-
   const handleNewSheet = () => {
     const nextDoc = createNewSheetDocNumber();
     setNoDokumen(nextDoc);
@@ -358,33 +355,7 @@ export const InputBarangMasukView: React.FC = () => {
           </div>
         </div>
 
-        {/* Banner Preview Nama Barang di Bagian Atas */}
-        {activeItemPreview && (
-          <div className="bg-gradient-to-r from-emerald-800 to-emerald-900 text-white p-4 rounded-xl shadow-md border border-emerald-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-white/10 rounded-xl text-emerald-200 flex-shrink-0">
-                <Package className="w-6 h-6" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-[10px] text-emerald-300 uppercase tracking-widest font-bold">
-                  Nama Barang Terpilih (Baris #{activeRowIndex + 1})
-                </div>
-                <div className="text-base sm:text-lg font-black tracking-tight text-white leading-tight truncate">
-                  {activeItemPreview.nama}
-                </div>
-                <div className="text-xs text-emerald-200 flex flex-wrap items-center gap-3 mt-1 font-mono">
-                  <span>Kode: <strong>{activeItemPreview.kode}</strong></span>
-                  <span>&bull;</span>
-                  <span>Satuan: <strong>{activeItemPreview.satuan}</strong></span>
-                  <span>&bull;</span>
-                  <span>Lokasi: <strong>{activeItemPreview.lokasi}</strong></span>
-                  <span>&bull;</span>
-                  <span>Stok Saat Ini: <strong className="text-white bg-emerald-950 px-2 py-0.5 rounded">{activeItemPreview.stok}</strong></span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Grid Baris & Kolom Kebawah: Kode - Nama Barang - Satuan - Stok Saat Ini - Qty */}
         <div className="space-y-3">
@@ -444,19 +415,7 @@ export const InputBarangMasukView: React.FC = () => {
                     </td>
 
                     {/* Kolom: Nama Barang (Autocomplete) */}
-                    <td className="py-2.5 px-3 min-w-[280px]">
-                      {/* Tampilkan Nama Barang di bagian atas input jika sudah dipilih */}
-                      {row.item && (
-                        <div className="mb-1.5 px-2.5 py-1 bg-emerald-100/90 border border-emerald-300 rounded-lg text-emerald-950 text-xs font-black leading-snug flex items-center justify-between gap-1 shadow-2xs">
-                          <span className="truncate" title={row.item.nama}>
-                            {row.item.nama}
-                          </span>
-                          <span className="text-[10px] text-emerald-800 bg-white/90 px-1.5 py-0.5 rounded font-mono font-bold flex-shrink-0">
-                            {row.item.satuan}
-                          </span>
-                        </div>
-                      )}
-
+                    <td className="py-2 px-3 min-w-[280px]">
                       <div onFocus={() => setActiveRowIndex(index)}>
                         <ItemAutocomplete
                           ref={el => { namaInputRefs.current[index] = el; }}
