@@ -68,9 +68,11 @@ export const ItemQuickDetailModal: React.FC<ItemQuickDetailModalProps> = ({ item
       tanggal: formatToDDMMYYYY(t.tanggal),
       noDokumen: t.noDokumen,
       jenis: t.type === 'IN' ? 'MASUK' : 'KELUAR',
-      keterangan: t.keterangan,
+      keterangan: t.keterangan || '-',
       masuk: t.type === 'IN' ? t.qty : 0,
       keluar: t.type === 'OUT' ? t.qty : 0,
+      stokSebelum: t.stokSebelum,
+      stokSaatIni: t.stokSesudah,
       sisa: t.stokSesudah
     }));
     exportKartuStokToExcel(item, entries);
@@ -195,48 +197,54 @@ export const ItemQuickDetailModal: React.FC<ItemQuickDetailModalProps> = ({ item
                 Belum ada catatan mutasi transaksi keluar/masuk untuk barang ini.
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
-                <table className="w-full text-xs text-left">
+              <div className="border border-gray-200 rounded-xl overflow-x-auto shadow-xs">
+                <table className="w-full text-xs text-left min-w-[640px]">
                   <thead className="bg-gray-100 text-gray-700 font-semibold border-b border-gray-200">
                     <tr>
-                      <th className="py-2.5 px-3">Tanggal (dd-mm-yyyy)</th>
-                      <th className="py-2.5 px-3">No Dokumen</th>
-                      <th className="py-2.5 px-3">Jenis</th>
-                      <th className="py-2.5 px-3 text-right">Qty</th>
-                      <th className="py-2.5 px-3 text-right">Sisa Stok</th>
-                      <th className="py-2.5 px-3">Keterangan</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap">Tanggal</th>
+                      <th className="py-2.5 px-3 whitespace-nowrap">No Document</th>
+                      <th className="py-2.5 px-3 min-w-[150px]">Keterangan</th>
+                      <th className="py-2.5 px-3 text-right text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
+                      <th className="py-2.5 px-3 text-right text-rose-700 font-bold whitespace-nowrap">Keluar</th>
+                      <th className="py-2.5 px-3 text-right whitespace-nowrap">Stok Sebelum</th>
+                      <th className="py-2.5 px-3 text-right text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
                     {itemTransactions.map((tx, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="py-2 px-3 font-mono text-gray-600">
+                      <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-gray-600 whitespace-nowrap">
                           {formatToDDMMYYYY(tx.tanggal)}
                         </td>
-                        <td className="py-2 px-3 font-mono text-emerald-800 font-medium">
+                        <td className="py-2.5 px-3 font-mono text-emerald-900 font-medium whitespace-nowrap">
                           {tx.noDokumen}
                         </td>
-                        <td className="py-2 px-3">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                              tx.type === 'IN'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {tx.type === 'IN' ? 'MASUK' : 'KELUAR'}
-                          </span>
-                        </td>
-                        <td className={`py-2 px-3 text-right font-bold ${
-                          tx.type === 'IN' ? 'text-emerald-600' : 'text-rose-600'
-                        }`}>
-                          {tx.type === 'IN' ? `+${tx.qty}` : `-${tx.qty}`}
-                        </td>
-                        <td className="py-2 px-3 text-right font-semibold text-gray-900">
-                          {tx.stokSesudah}
-                        </td>
-                        <td className="py-2 px-3 text-gray-600 max-w-xs truncate">
+                        <td className="py-2.5 px-3 text-gray-700 max-w-xs truncate" title={tx.keterangan || '-'}>
                           {tx.keterangan || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                          {tx.type === 'IN' ? (
+                            <span className="inline-block px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
+                              +{tx.qty}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 font-normal">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                          {tx.type === 'OUT' ? (
+                            <span className="inline-block px-2 py-0.5 rounded-md font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
+                              -{tx.qty}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300 font-normal">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-gray-600 whitespace-nowrap">
+                          {tx.stokSebelum}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 whitespace-nowrap">
+                          {tx.stokSesudah}
                         </td>
                       </tr>
                     ))}

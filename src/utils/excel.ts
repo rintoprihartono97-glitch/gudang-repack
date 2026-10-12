@@ -56,11 +56,13 @@ export function exportKartuStokToExcel(
   entries: Array<{
     tanggal: string;
     noDokumen: string;
-    jenis: string;
     keterangan: string;
     masuk: number;
     keluar: number;
-    sisa: number;
+    stokSebelum?: number;
+    stokSaatIni?: number;
+    sisa?: number;
+    jenis?: string;
   }>,
   filename?: string
 ) {
@@ -76,12 +78,12 @@ export function exportKartuStokToExcel(
   const tableData = entries.map((e, idx) => ({
     'No': idx + 1,
     'Tanggal (dd-mm-yyyy)': e.tanggal,
-    'No Dokumen': e.noDokumen,
-    'Jenis Transaksi': e.jenis,
-    'Keterangan': e.keterangan,
+    'No Document': e.noDokumen,
+    'Keterangan': e.keterangan || '-',
     'Masuk': e.masuk || 0,
     'Keluar': e.keluar || 0,
-    'Sisa Stok': e.sisa
+    'Stok Sebelum': e.stokSebelum !== undefined ? e.stokSebelum : '-',
+    'Stok Saat Ini': e.stokSaatIni !== undefined ? e.stokSaatIni : (e.sisa ?? item.stok)
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(tableData);

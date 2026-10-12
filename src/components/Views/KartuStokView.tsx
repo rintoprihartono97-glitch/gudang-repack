@@ -105,10 +105,11 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
     const formatted = ledgerEntries.map(e => ({
       tanggal: formatToDDMMYYYY(e.tanggal),
       noDokumen: e.noDokumen,
-      jenis: e.jenis,
       keterangan: e.keterangan,
       masuk: e.masuk,
       keluar: e.keluar,
+      stokSebelum: e.stokSebelum,
+      stokSaatIni: e.stokSesudah,
       sisa: e.stokSesudah
     }));
 
@@ -248,18 +249,18 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
           </div>
 
           {/* Ledger Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs">
+          <div className="border border-gray-200 rounded-xl overflow-x-auto shadow-xs">
+            <table className="w-full text-left text-xs min-w-[700px]">
               <thead className="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider border-b border-gray-200">
                 <tr>
                   <th className="py-3 px-3 w-10 text-center">No</th>
-                  <th className="py-3 px-3 w-32">Tanggal (dd-mm-yyyy)</th>
-                  <th className="py-3 px-3 w-36">No Dokumen</th>
-                  <th className="py-3 px-3 w-28">Jenis Mutasi</th>
+                  <th className="py-3 px-3 w-32 whitespace-nowrap">Tanggal (dd-mm-yyyy)</th>
+                  <th className="py-3 px-3 w-36 whitespace-nowrap">No Document</th>
                   <th className="py-3 px-3 min-w-[200px]">Keterangan</th>
-                  <th className="py-3 px-3 text-right w-24 text-emerald-700">Masuk (+)</th>
-                  <th className="py-3 px-3 text-right w-24 text-rose-700">Keluar (-)</th>
-                  <th className="py-3 px-3 text-right w-28 text-gray-900">Sisa Stok</th>
+                  <th className="py-3 px-3 text-right w-24 text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
+                  <th className="py-3 px-3 text-right w-24 text-rose-700 font-bold whitespace-nowrap">Keluar</th>
+                  <th className="py-3 px-3 text-right w-24 text-gray-600 whitespace-nowrap">Stok Sebelum</th>
+                  <th className="py-3 px-3 text-right w-28 text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -275,33 +276,37 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
                       <td className="py-2.5 px-3 text-center text-gray-400 font-mono font-medium">
                         {idx + 1}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium">
+                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium whitespace-nowrap">
                         {formatToDDMMYYYY(row.tanggal)}
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900">
+                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900 whitespace-nowrap">
                         {row.noDokumen}
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                            row.jenis === 'MASUK'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {row.jenis}
-                        </span>
                       </td>
                       <td className="py-2.5 px-3 text-gray-600 max-w-xs truncate" title={row.keterangan}>
                         {row.keterangan}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-emerald-700">
-                        {row.masuk > 0 ? `+${row.masuk}` : '-'}
+                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                        {row.masuk > 0 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
+                            +{row.masuk}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 font-normal">-</span>
+                        )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-rose-700">
-                        {row.keluar > 0 ? `-${row.keluar}` : '-'}
+                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                        {row.keluar > 0 ? (
+                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
+                            -{row.keluar}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 font-normal">-</span>
+                        )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-black font-mono text-gray-900">
+                      <td className="py-2.5 px-3 text-right font-mono text-gray-600 whitespace-nowrap">
+                        {row.stokSebelum}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 whitespace-nowrap">
                         {row.stokSesudah}
                       </td>
                     </tr>

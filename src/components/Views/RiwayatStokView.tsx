@@ -311,17 +311,17 @@ export const RiwayatStokView: React.FC = () => {
             <thead className="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider border-b border-gray-200">
               <tr>
                 <th className="py-3 px-3 w-10 text-center">No</th>
-                <th className="py-3 px-3 w-28">Tanggal (dd-mm-yyyy)</th>
-                <th className="py-3 px-3 w-36">No Dokumen</th>
-                <th className="py-3 px-3 w-24">Jenis</th>
-                <th className="py-3 px-3 w-28">Kode</th>
-                <th className="py-3 px-3 min-w-[200px]">Nama Barang</th>
+                <th className="py-3 px-3 w-28 whitespace-nowrap">Tanggal (dd-mm-yyyy)</th>
+                <th className="py-3 px-3 w-36 whitespace-nowrap">No Document</th>
+                <th className="py-3 px-3 min-w-[150px]">Keterangan</th>
+                <th className="py-3 px-3 w-24">Kode</th>
+                <th className="py-3 px-3 min-w-[180px]">Nama Barang</th>
                 <th className="py-3 px-3 w-20">Satuan</th>
-                <th className="py-3 px-3 w-32">Lokasi</th>
-                <th className="py-3 px-3 text-right w-24">Qty</th>
-                <th className="py-3 px-3 text-right w-20">Sebelum</th>
-                <th className="py-3 px-3 text-right w-20">Sesudah</th>
-                <th className="py-3 px-3 min-w-[140px]">Keterangan</th>
+                <th className="py-3 px-3 w-28">Lokasi</th>
+                <th className="py-3 px-3 text-right w-24 text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
+                <th className="py-3 px-3 text-right w-24 text-rose-700 font-bold whitespace-nowrap">Keluar</th>
+                <th className="py-3 px-3 text-right w-24 text-gray-600 whitespace-nowrap">Stok Sebelum</th>
+                <th className="py-3 px-3 text-right w-24 text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
                 <th className="py-3 px-2 text-center w-24">Aksi</th>
               </tr>
             </thead>
@@ -340,22 +340,14 @@ export const RiwayatStokView: React.FC = () => {
                       <td className="py-2.5 px-3 text-center text-gray-400 font-mono">
                         {globalIdx}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium">
+                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium whitespace-nowrap">
                         {formatToDDMMYYYY(row.tanggal)}
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900">
+                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900 whitespace-nowrap">
                         {row.noDokumen}
                       </td>
-                      <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                            row.type === 'IN'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {row.type === 'IN' ? 'MASUK' : 'KELUAR'}
-                        </span>
+                      <td className="py-2.5 px-3 text-gray-600 max-w-xs truncate" title={row.keterangan}>
+                        {row.keterangan || '-'}
                       </td>
                       <td className="py-2.5 px-3 font-mono text-gray-600">
                         {row.kode || '-'}
@@ -369,19 +361,29 @@ export const RiwayatStokView: React.FC = () => {
                       <td className="py-2.5 px-3 text-gray-600">
                         {row.lokasi}
                       </td>
-                      <td className={`py-2.5 px-3 text-right font-extrabold ${
-                        row.type === 'IN' ? 'text-emerald-700' : 'text-rose-700'
-                      }`}>
-                        {row.type === 'IN' ? `+${row.qty}` : `-${row.qty}`}
+                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                        {row.type === 'IN' ? (
+                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
+                            +{row.qty}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 font-normal">-</span>
+                        )}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-gray-500 font-mono">
+                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                        {row.type === 'OUT' ? (
+                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
+                            -{row.qty}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 font-normal">-</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-gray-600 font-mono whitespace-nowrap">
                         {row.stokSebelum}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-gray-900 font-mono">
+                      <td className="py-2.5 px-3 text-right font-bold text-gray-900 font-mono whitespace-nowrap">
                         {row.stokSesudah}
-                      </td>
-                      <td className="py-2.5 px-3 text-gray-600 max-w-xs truncate" title={row.keterangan}>
-                        {row.keterangan || '-'}
                       </td>
                       <td className="py-2.5 px-2 text-center">
                         <NavLink
