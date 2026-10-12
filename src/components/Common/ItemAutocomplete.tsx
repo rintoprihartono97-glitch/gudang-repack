@@ -154,8 +154,8 @@ export const ItemAutocomplete = forwardRef<ItemAutocompleteHandle, ItemAutocompl
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          autoFocus={autoFocus}
-          className={`w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 transition-colors shadow-2xs ${sizeClasses[size]}`}
+          title={value}
+          className={`w-full bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-950 font-bold text-xs sm:text-sm transition-colors shadow-2xs ${sizeClasses[size]}`}
           autoComplete="off"
           spellCheck={false}
         />

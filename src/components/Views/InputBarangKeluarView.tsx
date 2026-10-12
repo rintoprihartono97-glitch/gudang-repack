@@ -12,10 +12,10 @@ import {
   Trash2, 
   Save, 
   CheckCircle2, 
-  AlertCircle,
+  AlertCircle, 
+  AlertTriangle,
   FileSpreadsheet,
-  Package,
-  AlertTriangle
+  Package
 } from 'lucide-react';
 
 interface EntryRow {
@@ -27,11 +27,12 @@ interface EntryRow {
 }
 
 export const InputBarangKeluarView: React.FC = () => {
-  const { recordTransaction, getNextDocNumber, transactions } = useInventory();
+  const { recordTransaction, getNextDocNumber, createNewSheetDocNumber, transactions } = useInventory();
 
   const [tanggal, setTanggal] = useState<string>(getTodayYYYYMMDD());
   const [noDokumen, setNoDokumen] = useState<string>(() => getNextDocNumber('OUT'));
   const [keterangan, setKeterangan] = useState<string>('');
+  const [activeRowIndex, setActiveRowIndex] = useState<number>(0);
 
   const [rows, setRows] = useState<EntryRow[]>([
     {
@@ -48,6 +49,30 @@ export const InputBarangKeluarView: React.FC = () => {
 
   const namaInputRefs = React.useRef<any[]>([]);
   const qtyInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+  // Selected item preview for top banner
+  const activeItemPreview = rows[activeRowIndex]?.item || rows.find(r => r.item)?.item || null;
+
+  const handleNewSheet = () => {
+    const nextDoc = createNewSheetDocNumber();
+    setNoDokumen(nextDoc);
+    setRows([
+      {
+        rowId: `row_${Date.now()}`,
+        item: null,
+        kodeInput: '',
+        namaInput: '',
+        qty: ''
+      }
+    ]);
+    setKeterangan('');
+    setActiveRowIndex(0);
+    setSuccessMessage(`Lembar pengeluaran baru dibuat dengan No Dokumen: ${nextDoc}`);
+    setErrorMessage(null);
+    setTimeout(() => {
+      namaInputRefs.current[0]?.focus();
+    }, 50);
+  };
 
   const addRow = () => {
     setRows(prev => [
@@ -74,6 +99,7 @@ export const InputBarangKeluarView: React.FC = () => {
           qty: ''
         }
       ];
+      setActiveRowIndex(next.length - 1);
       setTimeout(() => {
         namaInputRefs.current[next.length - 1]?.focus();
       }, 50);
@@ -92,12 +118,15 @@ export const InputBarangKeluarView: React.FC = () => {
           qty: ''
         }
       ]);
+      setActiveRowIndex(0);
       return;
     }
     setRows(prev => prev.filter((_, i) => i !== index));
+    setActiveRowIndex(prev => Math.max(0, prev - 1));
   };
 
   const handleSelectItem = (rowIndex: number, selectedItem: Item) => {
+    setActiveRowIndex(rowIndex);
     setRows(prev => prev.map((r, i) => {
       if (i === rowIndex) {
         return {
@@ -166,7 +195,7 @@ export const InputBarangKeluarView: React.FC = () => {
       setErrorMessage(result.error || 'Gagal menyimpan barang keluar.');
     } else {
       setSuccessMessage(`Berhasil menyimpan barang keluar No Dokumen: ${noDokumen}`);
-      // Reset rows and generate next auto document number
+      // Reset rows and generate next auto document number automatically
       setRows([
         {
           rowId: `row_${Date.now()}`,
@@ -177,6 +206,7 @@ export const InputBarangKeluarView: React.FC = () => {
         }
       ]);
       setKeterangan('');
+      setActiveRowIndex(0);
       setNoDokumen(getNextDocNumber('OUT'));
     }
   };
@@ -186,44 +216,73 @@ export const InputBarangKeluarView: React.FC = () => {
     exportTransactionsToExcel(outTxs, 'Laporan_Barang_Keluar_Gudang_Repack.xlsx');
   };
 
+  const totalQty = rows.reduce((acc, r) => acc + (typeof r.qty === 'number' ? r.qty : 0), 0);
+  const totalItemCount = rows.filter(r => r.item !== null).length;
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Title Header */}
-      <div className="bg-white p-6 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6">
+      {/* Top Header Card */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-rose-50 rounded-xl text-rose-700">
+          <div className="p-3 bg-rose-50 rounded-xl text-rose-800">
             <ArrowUpRight className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                Formulir Pengeluaran
+              </span>
+              <span className="text-[11px] text-gray-400">Gudang Repack</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight mt-0.5">
               2. Input Barang Keluar
             </h1>
             <p className="text-xs sm:text-sm text-gray-500">
-              Formulir pengeluaran / distribusi barang dengan grid baris dan validasi ketersediaan stok.
+              Pencatatan pengeluaran barang, pengurangan stok otomatis, dan validasi sisa stok.
             </p>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExportHistory}
-          className="inline-flex items-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-semibold self-start md:self-auto transition-colors"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-rose-600" />
-          Ekspor Riwayat Keluar .xlsx
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleNewSheet}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-800 hover:bg-rose-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            + Buat Lembar Baru
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportHistory}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-colors"
+            title="Ekspor Riwayat Barang Keluar ke Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-rose-700" />
+            Ekspor Excel .xlsx
+          </button>
+        </div>
       </div>
 
-      {/* Notifications */}
+      {/* Alert Messages */}
       {successMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-center gap-3 text-sm animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-          <span className="font-medium">{successMessage}</span>
+        <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs sm:text-sm flex items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">{successMessage}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-bold px-2 py-1"
+          >
+            Tutup
+          </button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-center gap-3 text-sm animate-in fade-in">
+        <div className="p-4 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 text-xs sm:text-sm flex items-center gap-2.5 animate-in fade-in duration-200">
           <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
           <span className="font-medium">{errorMessage}</span>
         </div>
@@ -253,22 +312,36 @@ export const InputBarangKeluarView: React.FC = () => {
             </div>
           </div>
 
-          {/* No Document: awal manual, selanjutnya otomatis */}
+          {/* No Document: awal manual, selanjutnya otomatis (RPK-2026-000001) */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-rose-700" />
-              No Document
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-rose-700" />
+                No Document
+              </label>
+              <button
+                type="button"
+                onClick={handleNewSheet}
+                title="Buat lembar baru dengan nomor dokumen otomatis selanjutnya"
+                className="text-[11px] font-bold text-rose-800 hover:text-rose-950 bg-rose-100 hover:bg-rose-200 px-2 py-0.5 rounded-md border border-rose-300 flex items-center gap-1 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                + Lembar Baru
+              </button>
+            </div>
             <input
               type="text"
               value={noDokumen}
               onChange={e => setNoDokumen(e.target.value)}
-              placeholder="Contoh: BK-20261011-001"
+              placeholder="Contoh: RPK-2026-000001"
               required
-              className="w-full bg-slate-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 font-mono font-semibold focus:ring-2 focus:ring-rose-500 focus:outline-none"
+              className="w-full bg-rose-50/70 border border-rose-300 rounded-lg px-3 py-2 text-sm text-rose-950 font-mono font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none shadow-2xs"
             />
-            <div className="text-[11px] text-gray-500 mt-1">
-              Nomor dokumen terisi otomatis atau ubah manual
+            <div className="text-[11px] text-gray-500 mt-1 flex items-center justify-between">
+              <span>Nomor Otomatis: <strong>{noDokumen}</strong></span>
+              <span className="text-[10px] text-rose-700 font-semibold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
+                Otomatis Bertambah
+              </span>
             </div>
           </div>
 
@@ -290,6 +363,34 @@ export const InputBarangKeluarView: React.FC = () => {
           </div>
         </div>
 
+        {/* Banner Preview Nama Barang di Bagian Atas */}
+        {activeItemPreview && (
+          <div className="bg-gradient-to-r from-rose-800 to-rose-900 text-white p-4 rounded-xl shadow-md border border-rose-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-150">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white/10 rounded-xl text-rose-200 flex-shrink-0">
+                <Package className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] text-rose-300 uppercase tracking-widest font-bold">
+                  Nama Barang Terpilih (Baris #{activeRowIndex + 1})
+                </div>
+                <div className="text-base sm:text-lg font-black tracking-tight text-white leading-tight truncate">
+                  {activeItemPreview.nama}
+                </div>
+                <div className="text-xs text-rose-200 flex flex-wrap items-center gap-3 mt-1 font-mono">
+                  <span>Kode: <strong>{activeItemPreview.kode}</strong></span>
+                  <span>&bull;</span>
+                  <span>Satuan: <strong>{activeItemPreview.satuan}</strong></span>
+                  <span>&bull;</span>
+                  <span>Lokasi: <strong>{activeItemPreview.lokasi}</strong></span>
+                  <span>&bull;</span>
+                  <span>Stok Saat Ini: <strong className="text-white bg-rose-950 px-2 py-0.5 rounded">{activeItemPreview.stok}</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Grid Baris & Kolom Kebawah: Kode - Nama Barang - Satuan - Stok Saat Ini - Qty */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -298,7 +399,7 @@ export const InputBarangKeluarView: React.FC = () => {
               Tabel Baris Item Barang Keluar
             </h3>
             <span className="text-xs text-gray-500">
-              Gunakan tanda panah keyboard & Enter untuk memilih pada kolom pencarian
+              Gunakan tanda panah keyboard & Enter / Tab untuk memilih & otomatis tambah baris
             </span>
           </div>
 
@@ -308,9 +409,9 @@ export const InputBarangKeluarView: React.FC = () => {
               <thead className="bg-slate-200 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-300">
                 <tr>
                   <th className="py-3 px-3 w-10 text-center">#</th>
-                  <th className="py-3 px-3 w-44">Kode Barang</th>
-                  <th className="py-3 px-3 min-w-[240px]">Nama Barang (Autocomplete)</th>
-                  <th className="py-3 px-3 w-28">Satuan</th>
+                  <th className="py-3 px-3 w-40">Kode Barang</th>
+                  <th className="py-3 px-3 min-w-[280px]">Nama Barang (Autocomplete)</th>
+                  <th className="py-3 px-3 w-24 text-center">Satuan</th>
                   <th className="py-3 px-3 w-36">Lokasi</th>
                   <th className="py-3 px-3 w-28 text-right">Stok Saat Ini</th>
                   <th className="py-3 px-3 w-32 text-right">Qty Keluar</th>
@@ -322,53 +423,75 @@ export const InputBarangKeluarView: React.FC = () => {
                   const isInsufficient = row.item && row.qty !== '' && Number(row.qty) > row.item.stok;
 
                   return (
-                    <tr key={row.rowId} className={`transition-colors ${isInsufficient ? 'bg-rose-50/70' : 'hover:bg-slate-50'}`}>
+                    <tr 
+                      key={row.rowId} 
+                      onClick={() => setActiveRowIndex(index)}
+                      className={`transition-colors ${
+                        isInsufficient ? 'bg-rose-50/80' : activeRowIndex === index ? 'bg-rose-50/40' : 'hover:bg-slate-50'
+                      }`}
+                    >
                       <td className="py-2.5 px-3 text-center text-gray-500 font-bold font-mono">
                         {index + 1}
                       </td>
 
                       {/* Kolom: Kode (Autocomplete) */}
                       <td className="py-2 px-3">
-                        <ItemAutocomplete
-                          value={row.kodeInput}
-                          onChange={val => {
-                            setRows(prev => prev.map((r, i) => i === index ? { ...r, kodeInput: val } : r));
-                          }}
-                          onSelectItem={item => handleSelectItem(index, item)}
-                          onNextField={() => {
-                            qtyInputRefs.current[index]?.focus();
-                          }}
-                          field="kode"
-                          placeholder="Ketik kode..."
-                          size="sm"
-                        />
+                        <div onFocus={() => setActiveRowIndex(index)}>
+                          <ItemAutocomplete
+                            value={row.kodeInput}
+                            onChange={val => {
+                              setRows(prev => prev.map((r, i) => i === index ? { ...r, kodeInput: val } : r));
+                            }}
+                            onSelectItem={item => handleSelectItem(index, item)}
+                            onNextField={() => {
+                              qtyInputRefs.current[index]?.focus();
+                            }}
+                            field="kode"
+                            placeholder="Ketik kode..."
+                            size="sm"
+                          />
+                        </div>
                       </td>
 
                       {/* Kolom: Nama Barang (Autocomplete) */}
-                      <td className="py-2 px-3">
-                        <ItemAutocomplete
-                          ref={el => { namaInputRefs.current[index] = el; }}
-                          value={row.namaInput}
-                          onChange={val => {
-                            setRows(prev => prev.map((r, i) => i === index ? { ...r, namaInput: val } : r));
-                          }}
-                          onSelectItem={item => handleSelectItem(index, item)}
-                          onNextField={() => {
-                            qtyInputRefs.current[index]?.focus();
-                          }}
-                          field="nama"
-                          placeholder="Ketik nama barang..."
-                          size="sm"
-                        />
+                      <td className="py-2.5 px-3 min-w-[280px]">
+                        {/* Tampilkan Nama Barang di bagian atas input jika sudah dipilih */}
+                        {row.item && (
+                          <div className="mb-1.5 px-2.5 py-1 bg-rose-100/90 border border-rose-300 rounded-lg text-rose-950 text-xs font-black leading-snug flex items-center justify-between gap-1 shadow-2xs">
+                            <span className="truncate" title={row.item.nama}>
+                              {row.item.nama}
+                            </span>
+                            <span className="text-[10px] text-rose-800 bg-white/90 px-1.5 py-0.5 rounded font-mono font-bold flex-shrink-0">
+                              {row.item.satuan}
+                            </span>
+                          </div>
+                        )}
+
+                        <div onFocus={() => setActiveRowIndex(index)}>
+                          <ItemAutocomplete
+                            ref={el => { namaInputRefs.current[index] = el; }}
+                            value={row.namaInput}
+                            onChange={val => {
+                              setRows(prev => prev.map((r, i) => i === index ? { ...r, namaInput: val } : r));
+                            }}
+                            onSelectItem={item => handleSelectItem(index, item)}
+                            onNextField={() => {
+                              qtyInputRefs.current[index]?.focus();
+                            }}
+                            field="nama"
+                            placeholder="Ketik nama barang..."
+                            size="sm"
+                          />
+                        </div>
                       </td>
 
                       {/* Kolom: Satuan (Read Only) */}
-                      <td className="py-2 px-3">
+                      <td className="py-2 px-3 text-center">
                         <input
                           type="text"
                           readOnly
                           value={row.item ? row.item.satuan : '-'}
-                          className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1.5 text-xs text-gray-600 font-semibold cursor-not-allowed text-center"
+                          className="w-full bg-slate-100 border border-slate-200 rounded px-2 py-1.5 text-xs text-gray-700 font-bold cursor-not-allowed text-center"
                         />
                       </td>
 
@@ -407,6 +530,7 @@ export const InputBarangKeluarView: React.FC = () => {
                             step="any"
                             value={row.qty}
                             onChange={e => updateQty(index, e.target.value)}
+                            onFocus={() => setActiveRowIndex(index)}
                             onKeyDown={e => {
                               if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
                                 e.preventDefault();
@@ -460,24 +584,37 @@ export const InputBarangKeluarView: React.FC = () => {
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold shadow-2xs transition-colors"
             >
               <Plus className="w-4 h-4" />
-              + Tambah Baris Barang Keluar
+              + Tambah Baris Barang (Atau tekan Enter/Tab di Qty)
             </button>
           </div>
         </div>
 
-        {/* Tombol Save dipaling bawah */}
+        {/* Bottom Section: Total Summary & Tombol Simpan */}
         <div className="pt-4 border-t border-slate-300 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-slate-600">
-            Total {rows.filter(r => r.item && Number(r.qty) > 0).length} item siap dikeluarkan.
+          <div className="flex items-center gap-6 text-xs text-gray-600">
+            <div>
+              Total Baris Terisi: <strong className="text-gray-900 font-mono">{totalItemCount}</strong> dari {rows.length}
+            </div>
+            <div>
+              Total Qty Keluar: <strong className="text-rose-800 font-mono text-sm font-black">{totalQty}</strong>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
+              type="button"
+              onClick={handleNewSheet}
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-colors"
+            >
+              Reset / Lembar Baru
+            </button>
+
+            <button
               type="submit"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-800 hover:bg-rose-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95"
             >
               <Save className="w-4 h-4" />
-              SIMPAN BARANG KELUAR
+              Simpan Barang Keluar
             </button>
           </div>
         </div>

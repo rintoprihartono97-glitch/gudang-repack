@@ -18,7 +18,8 @@ interface InventoryContextType {
     keterangan: string;
     items: Array<{ itemId: string; qty: number }>;
   }) => { success: boolean; error?: string };
-  getNextDocNumber: (type: 'IN' | 'OUT') => string;
+  getNextDocNumber: (type?: 'IN' | 'OUT') => string;
+  createNewSheetDocNumber: () => string;
   resetToDefault: () => void;
   clearTransactions: () => void;
   importItems: (newItems: Item[]) => void;
@@ -108,16 +109,43 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return items.find(i => i.id === id);
   };
 
-  const getNextDocNumber = (type: 'IN' | 'OUT'): string => {
+  const getNextDocNumber = (_type?: 'IN' | 'OUT'): string => {
     const now = new Date();
     const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const datePrefix = `${yyyy}${mm}${dd}`;
-    const prefix = type === 'IN' ? `BM-${datePrefix}-` : `BK-${datePrefix}-`;
 
-    const countForToday = transactions.filter(t => t.type === type && t.noDokumen.startsWith(prefix)).length + 1;
-    return `${prefix}${String(countForToday).padStart(3, '0')}`;
+    let maxSeq = 0;
+    // Scan existing transactions for RPK-YYYY-XXXXXX or RPK-XXXXXX
+    transactions.forEach(t => {
+      const match = (t.noDokumen || '').match(/RPK-(?:\d{4}-)?(\d+)/i);
+      if (match && match[1]) {
+        const val = parseInt(match[1], 10);
+        if (!isNaN(val) && val > maxSeq) {
+          maxSeq = val;
+        }
+      }
+    });
+
+    try {
+      const storedSeq = parseInt(localStorage.getItem('gudang_repack_doc_seq') || '0', 10);
+      if (!isNaN(storedSeq) && storedSeq > maxSeq) {
+        maxSeq = storedSeq;
+      }
+    } catch (e) {}
+
+    const nextSeq = maxSeq + 1;
+    return `RPK-${yyyy}-${String(nextSeq).padStart(6, '0')}`;
+  };
+
+  const createNewSheetDocNumber = (): string => {
+    const nextDoc = getNextDocNumber();
+    const match = nextDoc.match(/RPK-(?:\d{4}-)?(\d+)/i);
+    if (match && match[1]) {
+      const seq = parseInt(match[1], 10);
+      try {
+        localStorage.setItem('gudang_repack_doc_seq', String(seq));
+      } catch (e) {}
+    }
+    return nextDoc;
   };
 
   const addItem = (data: Omit<Item, 'id'>): Item => {
@@ -226,6 +254,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Add transaction to history
     setTransactions(prev => [newTransaction, ...prev]);
 
+    // Track used sequence number so next document automatically increments
+    const docMatch = data.noDokumen.match(/RPK-(?:\d{4}-)?(\d+)/i);
+    if (docMatch && docMatch[1]) {
+      const seqUsed = parseInt(docMatch[1], 10);
+      try {
+        const prev = parseInt(localStorage.getItem('gudang_repack_doc_seq') || '0', 10);
+        if (seqUsed >= prev) {
+          localStorage.setItem('gudang_repack_doc_seq', String(seqUsed));
+        }
+      } catch (e) {}
+    }
+
     return { success: true };
   };
 
@@ -234,11 +274,13 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setTransactions([]);
     localStorage.setItem(STORAGE_KEY_ITEMS, JSON.stringify(INITIAL_ITEMS));
     localStorage.setItem(STORAGE_KEY_TXS, JSON.stringify([]));
+    localStorage.removeItem('gudang_repack_doc_seq');
   };
 
   const clearTransactions = () => {
     setTransactions([]);
     localStorage.setItem(STORAGE_KEY_TXS, JSON.stringify([]));
+    localStorage.removeItem('gudang_repack_doc_seq');
   };
 
   const importItems = (newItems: Item[]) => {
@@ -260,6 +302,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteItem,
         recordTransaction,
         getNextDocNumber,
+        createNewSheetDocNumber,
         resetToDefault,
         clearTransactions,
         importItems,
