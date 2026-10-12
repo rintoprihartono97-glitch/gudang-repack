@@ -77,7 +77,7 @@ export function exportKartuStokToExcel(
 
   const tableData = entries.map((e, idx) => ({
     'No': idx + 1,
-    'Tanggal (dd-mm-yyyy)': e.tanggal,
+    'Tanggal': e.tanggal,
     'No Document': e.noDokumen,
     'Keterangan': e.keterangan || '-',
     'Masuk': e.masuk || 0,

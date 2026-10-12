@@ -33,6 +33,8 @@ export const InputBarangMasukView: React.FC = () => {
   const [tanggal, setTanggal] = useState<string>(getTodayYYYYMMDD());
   const [noDokumen, setNoDokumen] = useState<string>(() => getNextDocNumber('IN'));
   const [keterangan, setKeterangan] = useState<string>('');
+  const [keteranganOption, setKeteranganOption] = useState<string>('');
+  const [customKeterangan, setCustomKeterangan] = useState<string>('');
   const [activeRowIndex, setActiveRowIndex] = useState<number>(0);
 
   const [rows, setRows] = useState<EntryRow[]>([
@@ -64,6 +66,8 @@ export const InputBarangMasukView: React.FC = () => {
       }
     ]);
     setKeterangan('');
+    setKeteranganOption('');
+    setCustomKeterangan('');
     setActiveRowIndex(0);
     setSuccessMessage(`Lembar baru dibuat dengan No Dokumen: ${nextDoc}`);
     setErrorMessage(null);
@@ -198,6 +202,8 @@ export const InputBarangMasukView: React.FC = () => {
         }
       ]);
       setKeterangan('');
+      setKeteranganOption('');
+      setCustomKeterangan('');
       setActiveRowIndex(0);
       setNoDokumen(getNextDocNumber('IN'));
     }
@@ -284,11 +290,11 @@ export const InputBarangMasukView: React.FC = () => {
       <form onSubmit={handleSubmit} className="bg-slate-100 p-5 sm:p-7 rounded-2xl border border-slate-300 shadow-sm space-y-6">
         {/* Top Header Information: Tanggal, No Dokumen, Keterangan */}
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Tanggal dengan Icon Date Picker & format dd-mm-yyyy */}
+          {/* Tanggal dengan Icon Date Picker */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-emerald-700" />
-              Tanggal Masuk (dd-mm-yyyy)
+              Tanggal Masuk
             </label>
             <div className="relative">
               <input
@@ -337,20 +343,49 @@ export const InputBarangMasukView: React.FC = () => {
             </div>
           </div>
 
-          {/* Keterangan */}
+          {/* Keterangan Dropdown: Repack KSB - Repack PKL - Repack Ulang - isi sendiri */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              Keterangan / Asal Pengiriman
+              Keterangan / Asal Mutasi
             </label>
-            <input
-              type="text"
-              value={keterangan}
-              onChange={e => setKeterangan(e.target.value)}
-              placeholder="Contoh: Penerimaan Pabrik / Supplier A"
-              className="w-full bg-slate-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
+            <select
+              value={keteranganOption}
+              onChange={e => {
+                const val = e.target.value;
+                setKeteranganOption(val);
+                if (val === 'isi sendiri') {
+                  setKeterangan(customKeterangan);
+                } else {
+                  setKeterangan(val);
+                }
+              }}
+              className="w-full bg-slate-50 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            >
+              <option value="">-- Pilih Keterangan --</option>
+              <option value="Repack KSB">Repack KSB</option>
+              <option value="Repack PKL">Repack PKL</option>
+              <option value="Repack Ulang">Repack Ulang</option>
+              <option value="isi sendiri">isi sendiri</option>
+            </select>
+
+            {keteranganOption === 'isi sendiri' && (
+              <input
+                type="text"
+                value={customKeterangan}
+                onChange={e => {
+                  setCustomKeterangan(e.target.value);
+                  setKeterangan(e.target.value);
+                }}
+                placeholder="Ketik keterangan barang masuk sendiri..."
+                autoFocus
+                className="mt-2 w-full bg-emerald-50/50 border border-emerald-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            )}
+
             <div className="text-[11px] text-gray-500 mt-1">
-              Catatan dokumen mutasi masuk
+              {keteranganOption === 'isi sendiri'
+                ? 'Ketik keterangan manual sesuai keperluan'
+                : 'Pilih: Repack KSB, Repack PKL, Repack Ulang, atau isi sendiri'}
             </div>
           </div>
         </div>

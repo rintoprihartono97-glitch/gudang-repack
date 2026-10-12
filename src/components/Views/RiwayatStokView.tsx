@@ -183,7 +183,7 @@ export const RiwayatStokView: React.FC = () => {
           <div>
             <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-              Dari Tanggal (dd-mm-yyyy)
+              Dari Tanggal
             </label>
             <input
               type="date"
@@ -205,7 +205,7 @@ export const RiwayatStokView: React.FC = () => {
           <div>
             <label className="block text-[11px] font-bold text-gray-600 mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-              Sampai Tanggal (dd-mm-yyyy)
+              Sampai Tanggal
             </label>
             <input
               type="date"
@@ -310,19 +310,19 @@ export const RiwayatStokView: React.FC = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider border-b border-gray-200">
               <tr>
-                <th className="py-3 px-3 w-10 text-center">No</th>
-                <th className="py-3 px-3 w-28 whitespace-nowrap">Tanggal (dd-mm-yyyy)</th>
-                <th className="py-3 px-3 w-36 whitespace-nowrap">No Document</th>
-                <th className="py-3 px-3 min-w-[150px]">Keterangan</th>
-                <th className="py-3 px-3 w-24">Kode</th>
-                <th className="py-3 px-3 min-w-[180px]">Nama Barang</th>
-                <th className="py-3 px-3 w-20">Satuan</th>
-                <th className="py-3 px-3 w-28">Lokasi</th>
-                <th className="py-3 px-3 text-right w-24 text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
-                <th className="py-3 px-3 text-right w-24 text-rose-700 font-bold whitespace-nowrap">Keluar</th>
-                <th className="py-3 px-3 text-right w-24 text-gray-600 whitespace-nowrap">Stok Sebelum</th>
-                <th className="py-3 px-3 text-right w-24 text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
-                <th className="py-3 px-2 text-center w-24">Aksi</th>
+                <th className="py-2.5 px-2 w-8 text-center">No</th>
+                <th className="py-2.5 px-2 whitespace-nowrap">Tanggal</th>
+                <th className="py-2.5 px-2 whitespace-nowrap">No Document</th>
+                <th className="py-2.5 px-2">Keterangan</th>
+                <th className="py-2.5 px-2 whitespace-nowrap">Kode</th>
+                <th className="py-2.5 px-2">Nama Barang</th>
+                <th className="py-2.5 px-1.5 text-center">Satuan</th>
+                <th className="py-2.5 px-2 whitespace-nowrap">Lokasi</th>
+                <th className="py-2.5 px-2 text-right text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
+                <th className="py-2.5 px-2 text-right text-rose-700 font-bold whitespace-nowrap">Keluar</th>
+                <th className="py-2.5 px-2 text-right text-gray-600 whitespace-nowrap">Stok Sblm</th>
+                <th className="py-2.5 px-2 text-right text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
+                <th className="py-2.5 px-1.5 text-center w-16">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -337,58 +337,58 @@ export const RiwayatStokView: React.FC = () => {
                   const globalIdx = (currentPage - 1) * itemsPerPage + index + 1;
                   return (
                     <tr key={`${row.txId}_${index}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-2.5 px-3 text-center text-gray-400 font-mono">
+                      <td className="py-2 px-2 text-center text-gray-400 font-mono text-[11px]">
                         {globalIdx}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium whitespace-nowrap">
+                      <td className="py-2 px-2 font-mono text-gray-700 font-medium whitespace-nowrap text-[11px]">
                         {formatToDDMMYYYY(row.tanggal)}
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900 whitespace-nowrap">
+                      <td className="py-2 px-2 font-mono font-semibold text-emerald-900 whitespace-nowrap text-[11px]">
                         {row.noDokumen}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-600 max-w-xs truncate" title={row.keterangan}>
+                      <td className="py-2 px-2 text-gray-600 max-w-[140px] truncate text-[11px]" title={row.keterangan}>
                         {row.keterangan || '-'}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-gray-600">
+                      <td className="py-2 px-2 font-mono text-gray-600 whitespace-nowrap text-[11px]">
                         {row.kode || '-'}
                       </td>
-                      <td className="py-2.5 px-3 font-semibold text-gray-900">
+                      <td className="py-2 px-2 font-semibold text-gray-900 text-xs max-w-[180px] truncate" title={row.nama}>
                         {row.nama}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-600">
+                      <td className="py-2 px-1.5 text-center text-gray-600 text-[11px]">
                         {row.satuan}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-600">
+                      <td className="py-2 px-2 text-gray-600 whitespace-nowrap text-[11px]">
                         {row.lokasi}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                      <td className="py-2 px-2 text-right font-bold whitespace-nowrap text-[11px]">
                         {row.type === 'IN' ? (
-                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
+                          <span className="inline-block px-1.5 py-0.5 rounded font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
                             +{row.qty}
                           </span>
                         ) : (
                           <span className="text-gray-300 font-normal">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                      <td className="py-2 px-2 text-right font-bold whitespace-nowrap text-[11px]">
                         {row.type === 'OUT' ? (
-                          <span className="inline-block px-2 py-0.5 rounded-md font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
+                          <span className="inline-block px-1.5 py-0.5 rounded font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
                             -{row.qty}
                           </span>
                         ) : (
                           <span className="text-gray-300 font-normal">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right text-gray-600 font-mono whitespace-nowrap">
+                      <td className="py-2 px-2 text-right text-gray-600 font-mono whitespace-nowrap text-[11px]">
                         {row.stokSebelum}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-gray-900 font-mono whitespace-nowrap">
+                      <td className="py-2 px-2 text-right font-bold text-gray-900 font-mono whitespace-nowrap text-[11px]">
                         {row.stokSesudah}
                       </td>
-                      <td className="py-2.5 px-2 text-center">
+                      <td className="py-2 px-1.5 text-center">
                         <NavLink
                           href={`#/kartu-stok?id=${row.itemId}`}
-                          className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold transition-colors"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-semibold transition-colors"
                           title="Buka Kartu Stok Barang ini (Bisa buka tab baru)"
                         >
                           Kartu Stok

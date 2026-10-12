@@ -250,17 +250,17 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
 
           {/* Ledger Table */}
           <div className="border border-gray-200 rounded-xl overflow-x-auto shadow-xs">
-            <table className="w-full text-left text-xs min-w-[700px]">
+            <table className="w-full text-left text-xs">
               <thead className="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider border-b border-gray-200">
                 <tr>
-                  <th className="py-3 px-3 w-10 text-center">No</th>
-                  <th className="py-3 px-3 w-32 whitespace-nowrap">Tanggal (dd-mm-yyyy)</th>
-                  <th className="py-3 px-3 w-36 whitespace-nowrap">No Document</th>
-                  <th className="py-3 px-3 min-w-[200px]">Keterangan</th>
-                  <th className="py-3 px-3 text-right w-24 text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
-                  <th className="py-3 px-3 text-right w-24 text-rose-700 font-bold whitespace-nowrap">Keluar</th>
-                  <th className="py-3 px-3 text-right w-24 text-gray-600 whitespace-nowrap">Stok Sebelum</th>
-                  <th className="py-3 px-3 text-right w-28 text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
+                  <th className="py-2.5 px-2.5 w-10 text-center">No</th>
+                  <th className="py-2.5 px-2.5 whitespace-nowrap">Tanggal</th>
+                  <th className="py-2.5 px-2.5 whitespace-nowrap">No Document</th>
+                  <th className="py-2.5 px-2.5">Keterangan</th>
+                  <th className="py-2.5 px-2.5 text-right text-emerald-700 font-bold whitespace-nowrap">Masuk</th>
+                  <th className="py-2.5 px-2.5 text-right text-rose-700 font-bold whitespace-nowrap">Keluar</th>
+                  <th className="py-2.5 px-2.5 text-right text-gray-600 whitespace-nowrap">Stok Sebelum</th>
+                  <th className="py-2.5 px-2.5 text-right text-gray-900 font-bold whitespace-nowrap">Stok Saat Ini</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
@@ -273,19 +273,19 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
                 ) : (
                   ledgerEntries.map((row, idx) => (
                     <tr key={`${row.txId}_${idx}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-2.5 px-3 text-center text-gray-400 font-mono font-medium">
+                      <td className="py-2 px-2.5 text-center text-gray-400 font-mono font-medium">
                         {idx + 1}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-gray-700 font-medium whitespace-nowrap">
+                      <td className="py-2 px-2.5 font-mono text-gray-700 font-medium whitespace-nowrap">
                         {formatToDDMMYYYY(row.tanggal)}
                       </td>
-                      <td className="py-2.5 px-3 font-mono font-semibold text-emerald-900 whitespace-nowrap">
+                      <td className="py-2 px-2.5 font-mono font-semibold text-emerald-900 whitespace-nowrap">
                         {row.noDokumen}
                       </td>
-                      <td className="py-2.5 px-3 text-gray-600 max-w-xs truncate" title={row.keterangan}>
+                      <td className="py-2 px-2.5 text-gray-600 max-w-xs truncate" title={row.keterangan}>
                         {row.keterangan}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                      <td className="py-2 px-2.5 text-right font-bold whitespace-nowrap">
                         {row.masuk > 0 ? (
                           <span className="inline-block px-2 py-0.5 rounded-md font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60">
                             +{row.masuk}
@@ -294,7 +294,7 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
                           <span className="text-gray-300 font-normal">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold whitespace-nowrap">
+                      <td className="py-2 px-2.5 text-right font-bold whitespace-nowrap">
                         {row.keluar > 0 ? (
                           <span className="inline-block px-2 py-0.5 rounded-md font-bold text-rose-700 bg-rose-50 border border-rose-200/60">
                             -{row.keluar}
@@ -303,10 +303,10 @@ export const KartuStokView: React.FC<KartuStokViewProps> = ({ initialItemId }) =
                           <span className="text-gray-300 font-normal">-</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-gray-600 whitespace-nowrap">
+                      <td className="py-2 px-2.5 text-right font-mono text-gray-600 whitespace-nowrap">
                         {row.stokSebelum}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-bold text-gray-900 whitespace-nowrap">
+                      <td className="py-2 px-2.5 text-right font-mono font-bold text-gray-900 whitespace-nowrap">
                         {row.stokSesudah}
                       </td>
                     </tr>
