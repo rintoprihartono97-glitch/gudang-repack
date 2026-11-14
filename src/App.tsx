@@ -11,9 +11,11 @@ import { Header } from './components/Layout/Header';
 import { DashboardView } from './components/Views/DashboardView';
 import { InputBarangMasukView } from './components/Views/InputBarangMasukView';
 import { InputBarangKeluarView } from './components/Views/InputBarangKeluarView';
+import { ProduksiView } from './components/Views/ProduksiView';
 import { InputBarangBaruView } from './components/Views/InputBarangBaruView';
 import { KelolaBarangView } from './components/Views/KelolaBarangView';
 import { RiwayatStokView } from './components/Views/RiwayatStokView';
+import { DaftarDokumenView } from './components/Views/DaftarDokumenView';
 import { KartuStokView } from './components/Views/KartuStokView';
 import { BackupRestoreView } from './components/Views/BackupRestoreView';
 
@@ -34,9 +36,11 @@ const MainApp: React.FC = () => {
         {route === 'dashboard' && <DashboardView />}
         {route === 'barang-masuk' && <InputBarangMasukView />}
         {route === 'barang-keluar' && <InputBarangKeluarView />}
+        {route === 'produksi' && <ProduksiView />}
         {route === 'barang-baru' && <InputBarangBaruView />}
         {route === 'kelola-barang' && <KelolaBarangView />}
         {route === 'riwayat-stok' && <RiwayatStokView />}
+        {route === 'daftar-dokumen' && <DaftarDokumenView />}
         {route === 'kartu-stok' && <KartuStokView initialItemId={param} />}
         {route === 'backup-restore' && <BackupRestoreView />}
       </main>

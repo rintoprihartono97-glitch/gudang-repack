@@ -1,0 +1,3634 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GUDANG REPACK - Sistem Manajemen Pergudangan & Stok</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS CDN for Instant Client-Side Excel Export (.xlsx) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Thin elegant scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    .autocomplete-items {
+      position: absolute;
+      border: 1px solid #cbd5e1;
+      border-top: none;
+      z-index: 999;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 240px;
+      overflow-y: auto;
+      background-color: #fff;
+      border-radius: 0 0 0.75rem 0.75rem;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+    }
+    .autocomplete-item:hover, .autocomplete-active {
+      background-color: #ecfdf5;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn {
+      animation: fadeIn 0.15s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-gray-900 min-h-screen flex flex-col font-sans antialiased text-xs sm:text-sm selection:bg-emerald-200 selection:text-emerald-900">
+
+  <!-- ================= TOP HEADER BAR ================= -->
+  <header class="sticky top-0 z-40 bg-emerald-800 text-white shadow-md border-b border-emerald-900/40">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
+      
+      <!-- Pojok Kiri Atas: Icon Rumah + GUDANG REPACK -->
+      <div class="flex items-center gap-2.5 flex-shrink-0 cursor-pointer" onclick="switchTab('dashboard')" title="Ke Dashboard Utama">
+        <div class="p-2 bg-emerald-700 hover:bg-emerald-600 rounded-lg shadow-xs transition-colors flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-extrabold tracking-wider text-base sm:text-lg leading-tight text-white flex items-center gap-1.5">
+            GUDANG REPACK
+          </span>
+          <span class="text-[10px] text-emerald-200 uppercase tracking-widest font-medium">
+            Sistem Pergudangan
+          </span>
+        </div>
+      </div>
+
+      <!-- Bagian Tengah Paling Atas: Kolom Pencarian Autocomplete Cepat -->
+      <div class="flex-1 max-w-xl mx-2 relative hidden md:block">
+        <div class="relative">
+          <input 
+            type="text" 
+            id="headerQuickSearch" 
+            placeholder="Cari nama barang,kode..." 
+            class="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-emerald-900/60 border border-emerald-600 text-white placeholder-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-emerald-900"
+            oninput="handleHeaderSearch(this.value)"
+          />
+          <svg class="w-4 h-4 text-emerald-300 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <div id="headerSearchResults" class="autocomplete-items hidden text-gray-800"></div>
+        </div>
+      </div>
+
+      <!-- Pojok Kanan Atas: Sinkronisasi & Tombol Menu Navigasi -->
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <!-- Status Sinkronisasi -->
+        <button 
+          onclick="syncDataFromServer()" 
+          id="btnSync"
+          title="Sinkronkan data dengan Google Sheet"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-lg text-xs font-semibold border border-emerald-600 text-white transition-colors shadow-xs"
+        >
+          <svg id="syncIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <span class="hidden sm:inline">Sinkron Sheet</span>
+        </button>
+
+        <span id="syncBadge" class="hidden lg:inline-block text-[10px] bg-emerald-950/60 text-emerald-200 px-2 py-1 rounded-md font-mono">
+          Ready
+        </span>
+      </div>
+
+    </div>
+
+    <!-- Navigation Bar Menu Buttons -->
+    <div class="bg-emerald-900/80 border-t border-emerald-700/50 px-3 sm:px-6">
+      <div class="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-1.5 scrollbar-none text-xs whitespace-nowrap">
+        <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-all text-white bg-emerald-700 shadow-xs">
+          <svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Dashboard Gudang
+        </button>
+        <button onclick="switchTab('masuk')" id="tab-btn-masuk" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          1. Input Masuk
+        </button>
+        <button onclick="switchTab('keluar')" id="tab-btn-keluar" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+          2. Input Keluar
+        </button>
+        <button onclick="switchTab('produksi')" id="tab-btn-produksi" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          3. Produksi
+        </button>
+        <button onclick="switchTab('baru')" id="tab-btn-baru" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          4. Barang Baru
+        </button>
+        <button onclick="switchTab('kelola')" id="tab-btn-kelola" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          5. Edit / Hapus
+        </button>
+        <button onclick="switchTab('dokumen')" id="tab-btn-dokumen" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          6. Daftar Document
+        </button>
+        <button onclick="switchTab('riwayat')" id="tab-btn-riwayat" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          7. Riwayat Stok
+        </button>
+        <button onclick="switchTab('kartu')" id="tab-btn-kartu" class="tab-btn px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-emerald-100 hover:bg-emerald-800">
+          <svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          8. Kartu Stok
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 space-y-6">
+
+    <!-- ================= VIEW 1: DASHBOARD GUDANG (DEFAULT VIEW DENGAN TABEL STOK) ================= -->
+    <section id="view-dashboard" class="tab-content space-y-6">
+      
+      <!-- Top Welcome & Excel Action Bar -->
+      <div class="bg-white p-6 rounded-2xl shadow-xs border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Sistem Informasi Gudang Aktif
+          </div>
+          <h1 class="text-2xl font-black text-gray-900 tracking-tight mt-1">
+            Dashboard Gudang Repack
+          </h1>
+          <p class="text-sm text-gray-500 mt-0.5">
+            Manajemen stok keluar masuk barang, pemantauan ketersediaan, dan kartu stok.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onclick="exportKatalogExcel()"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs hover:shadow-md transition-all active:scale-95"
+            title="Ekspor Seluruh Data Barang ke Excel (.xlsx)"
+          >
+            <svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Ekspor Excel .xlsx
+          </button>
+
+          <button
+            type="button"
+            onclick="switchTab('masuk')"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold transition-all hover:-translate-y-0.5"
+          >
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+            + Barang Masuk
+          </button>
+
+          <button
+            type="button"
+            onclick="switchTab('keluar')"
+            class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-semibold transition-all hover:-translate-y-0.5"
+          >
+            <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+            - Barang Keluar
+          </button>
+        </div>
+      </div>
+
+      <!-- Dashboard Stat Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Total Barang -->
+        <div onclick="filterDashboardStock('ALL')" class="cursor-pointer rounded-2xl p-5 border bg-white hover:border-emerald-300 text-gray-900 border-gray-200 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Barang</span>
+            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="statTotalBarang" class="text-3xl font-black tracking-tight text-gray-900">0</span>
+            <span class="text-xs text-gray-500">SKU Terdaftar</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-emerald-700 font-medium">
+            <span>Klik untuk tampilkan semua</span>
+            <span>&rarr;</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Total Lokasi -->
+        <div onclick="filterDashboardStock('LOCATION')" class="cursor-pointer rounded-2xl p-5 border bg-white hover:border-emerald-300 text-gray-900 border-gray-200 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Lokasi</span>
+            <div class="p-2 rounded-xl bg-blue-50 text-blue-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="statTotalLokasi" class="text-3xl font-black tracking-tight text-gray-900">0</span>
+            <span class="text-xs text-gray-500">Gudang & Toko</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-blue-700 font-medium">
+            <span>Filter per lokasi</span>
+            <span>&rarr;</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Barang Kosong -->
+        <div onclick="filterDashboardStock('EMPTY')" class="cursor-pointer rounded-2xl p-5 border bg-white hover:border-rose-300 text-gray-900 border-gray-200 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-rose-700">Barang Kosong</span>
+            <div class="p-2 rounded-xl bg-rose-50 text-rose-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="statBarangKosong" class="text-3xl font-black tracking-tight text-rose-600">0</span>
+            <span class="text-xs text-gray-500">Stok Habis (0)</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-rose-700 font-medium">
+            <span>Klik untuk lihat stok kosong</span>
+            <span>&rarr;</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Total Mutasi Dokumen -->
+        <div onclick="switchTab('dokumen')" class="cursor-pointer rounded-2xl p-5 border bg-white hover:border-emerald-300 text-gray-900 border-gray-200 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Mutasi</span>
+            <div class="p-2 rounded-xl bg-emerald-50 text-emerald-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+          </div>
+          <div class="mt-3 flex items-baseline gap-2">
+            <span id="statTotalMutasi" class="text-3xl font-black tracking-tight text-gray-900">0</span>
+            <span id="statMutasiDesc" class="text-xs text-gray-500">Dokumen Mutasi</span>
+          </div>
+          <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-emerald-700 font-medium">
+            <span>Buka Daftar Document</span>
+            <span>&rarr;</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= TABEL KATALOG & RINGKASAN STOK BARANG SAAT INI ================= -->
+      <div class="bg-white rounded-2xl shadow-xs border border-emerald-100 p-5 space-y-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+                Katalog & Ringkasan Stok Barang Saat Ini
+              </h2>
+              <span id="dashFilterBadge" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">Semua Barang</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-0.5">Daftar seluruh item dan jumlah stok riil yang tersimpan di gudang</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5">
+            <!-- Filter Lokasi -->
+            <select id="dashLocationSelect" onchange="handleDashLocationFilter(this.value)" class="text-xs bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 text-gray-800 font-medium">
+              <option value="ALL">Semua Lokasi</option>
+            </select>
+
+            <!-- Search Bar -->
+            <div class="relative">
+              <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input 
+                type="text" 
+                id="dashSearchInput" 
+                placeholder="Cari nama / kode barang..." 
+                oninput="handleDashSearch(this.value)"
+                class="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none w-48 sm:w-60"
+              />
+            </div>
+
+            <!-- Tombol Tambah Barang Cepat -->
+            <button onclick="switchTab('baru')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-xs">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              + Barang Baru
+            </button>
+          </div>
+        </div>
+
+        <!-- Tabel Stok -->
+        <div class="overflow-x-auto max-h-[520px] rounded-xl border border-gray-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 border-b border-gray-200">
+              <tr>
+                <th class="py-2.5 px-3 w-10 text-center">No</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Kode Barang</th>
+                <th class="py-2.5 px-3">Nama Barang</th>
+                <th class="py-2.5 px-2.5 text-center">Satuan</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Lokasi / Rak</th>
+                <th class="py-2.5 px-3 text-right whitespace-nowrap">Stok Saat Ini</th>
+                <th class="py-2.5 px-2.5 text-center">Status</th>
+                <th class="py-2.5 px-3 text-center w-28">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="dashTableBody" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi otomatis oleh JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination & Summary Footer -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-gray-500">
+          <div>
+            Menampilkan <span id="dashPageStart" class="font-bold text-gray-800">1</span> - <span id="dashPageEnd" class="font-bold text-gray-800">25</span> dari <span id="dashTotalCount" class="font-bold text-gray-800">0</span> barang
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btnDashPrev" onclick="changeDashPage(-1)" class="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded-md font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+              &larr; Prev
+            </button>
+            <span id="dashPageIndicator" class="px-2 py-1 font-mono font-bold text-gray-700">Hal 1 / 1</span>
+            <button id="btnDashNext" onclick="changeDashPage(1)" class="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded-md font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Navigation Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+        <div onclick="switchTab('masuk')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Input Masuk</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Barang Masuk</span>
+        </div>
+
+        <div onclick="switchTab('keluar')" class="cursor-pointer p-4 bg-white hover:bg-rose-700 rounded-2xl border border-rose-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-rose-50 group-hover:bg-rose-800 rounded-xl text-rose-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Input Keluar</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-rose-100 mt-0.5">Barang Keluar</span>
+        </div>
+
+        <div onclick="switchTab('produksi')" class="cursor-pointer p-4 bg-white hover:bg-amber-600 rounded-2xl border border-amber-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-amber-50 group-hover:bg-amber-700 rounded-xl text-amber-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Produksi</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-amber-100 mt-0.5">Kemas Ulang Barang</span>
+        </div>
+
+        <div onclick="switchTab('dokumen')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Daftar Document</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Lihat & Edit Inputan</span>
+        </div>
+
+        <div onclick="switchTab('baru')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Barang Baru</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Daftar Item</span>
+        </div>
+
+        <div onclick="switchTab('kelola')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Edit / Hapus</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Kelola Katalog</span>
+        </div>
+
+        <div onclick="switchTab('riwayat')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Riwayat Stok</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Log Masuk Keluar</span>
+        </div>
+
+        <div onclick="switchTab('kartu')" class="cursor-pointer p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center group hover:-translate-y-1">
+          <div class="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <span class="text-xs font-bold text-gray-800 group-hover:text-white">Kartu Stok</span>
+          <span class="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Buku Besar Item</span>
+        </div>
+      </div>
+
+      <!-- Barang Fast Moving Section -->
+      <div class="bg-white rounded-2xl shadow-xs border border-emerald-100 p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-emerald-50 rounded-xl text-emerald-700">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-gray-900">Barang Fast Moving</h3>
+                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase rounded-full">Paling Cepat Bergerak</span>
+              </div>
+              <p class="text-xs text-gray-500">Daftar barang dengan frekuensi keluar-masuk dan pengeluaran volume paling aktif.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="fastMovingContainer">
+          <!-- Fast moving items table or empty message rendered here -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 2: INPUT BARANG MASUK ================= -->
+    <section id="view-masuk" class="tab-content hidden space-y-4">
+      
+      <!-- Top Form Card -->
+      <div class="bg-white rounded-xl shadow-xs border border-gray-200 p-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div>
+            <h2 class="text-base sm:text-lg font-black text-emerald-800 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              1. Input Barang Masuk (Penerimaan)
+            </h2>
+            <p class="text-gray-500 text-xs">Pencatatan penambahan stok repack ke gudang</p>
+          </div>
+          
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              type="button" 
+              onclick="createNewSheet('IN')"
+              class="flex-1 sm:flex-initial px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            >
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Buat Lembar Baru
+            </button>
+            <button 
+              type="button" 
+              onclick="submitTransaction('IN')"
+              class="flex-1 sm:flex-initial px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Simpan Masuk
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Header Input Kolom: Tanggal, No Document, Keterangan -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
+          <!-- Tanggal (Hanya teks Tanggal, tanpa format dd-mm-yyyy) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal</label>
+            <input 
+              type="date" 
+              id="masuk_tanggal" 
+              class="w-full px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-gray-50"
+            />
+          </div>
+
+          <!-- No Document (Otomatis awal RPK-2026-000001) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+              <span>No Document</span>
+              <span class="text-[10px] text-emerald-700 font-semibold">(Otomatis Bertambah)</span>
+            </label>
+            <input 
+              type="text" 
+              id="masuk_noDokumen" 
+              readonly
+              class="w-full px-3 py-2 text-xs font-mono font-bold text-emerald-900 bg-emerald-50/70 border border-emerald-300 rounded-lg cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Keterangan Dropdown: Repack KSB, Repack PKL, Repack Ulang, isi sendiri -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan</label>
+            <div class="space-y-1.5">
+              <select 
+                id="masuk_keteranganSelect" 
+                onchange="handleKeteranganChange('masuk')"
+                class="w-full px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
+              >
+                <option value="">-- Pilih Keterangan Masuk --</option>
+                <option value="Repack KSB">Repack KSB</option>
+                <option value="Repack PKL">Repack PKL</option>
+                <option value="Repack Ulang">Repack Ulang</option>
+                <option value="isi sendiri">isi sendiri</option>
+              </select>
+              <input 
+                type="text" 
+                id="masuk_keteranganCustom" 
+                placeholder="Tulis keterangan custom disini..." 
+                class="hidden w-full px-3 py-1.5 text-xs border border-emerald-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-emerald-50/50"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Card: Input Items (Fit to Screen) -->
+      <div class="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <div class="font-bold text-xs text-gray-700">Daftar Barang Masuk</div>
+          <button 
+            type="button" 
+            onclick="addTableRow('IN')"
+            class="px-2.5 py-1 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Tambah Baris
+          </button>
+        </div>
+
+        <div class="w-full">
+          <table class="w-full table-fixed text-left text-xs">
+            <thead class="bg-gray-100/80 text-gray-700 font-bold border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="w-[5%] py-2.5 px-2 text-center">No</th>
+                <th class="w-[40%] py-2.5 px-3">Pilih / Ketik Barang</th>
+                <th class="w-[15%] py-2.5 px-2 text-center">Satuan</th>
+                <th class="w-[20%] py-2.5 px-2">Lokasi</th>
+                <th class="w-[15%] py-2.5 px-2 text-right">Qty Masuk</th>
+                <th class="w-[5%] py-2.5 px-1 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-masuk" class="divide-y divide-gray-100">
+              <!-- Diisi otomatis oleh baris input JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer Total Summary -->
+        <div class="bg-emerald-50/60 px-4 py-3 border-t border-emerald-100 flex items-center justify-between text-xs">
+          <div class="text-emerald-900 font-medium">
+            Total Baris: <span id="totalRows-IN" class="font-bold">0</span> item
+          </div>
+          <div class="text-emerald-900 font-medium flex items-center gap-4">
+            <span>Total Qty Masuk:</span>
+            <span id="totalQty-IN" class="text-base font-black text-emerald-800">0</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 3: INPUT BARANG KELUAR ================= -->
+    <section id="view-keluar" class="tab-content hidden space-y-4">
+      
+      <!-- Top Form Card -->
+      <div class="bg-white rounded-xl shadow-xs border border-gray-200 p-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div>
+            <h2 class="text-base sm:text-lg font-black text-rose-800 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+              2. Input Barang Keluar (Pengeluaran)
+            </h2>
+            <p class="text-gray-500 text-xs">Pencatatan mutasi barang keluar dari gudang</p>
+          </div>
+          
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button 
+              type="button" 
+              onclick="createNewSheet('OUT')"
+              class="flex-1 sm:flex-initial px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+            >
+              <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Buat Lembar Baru
+            </button>
+            <button 
+              type="button" 
+              onclick="submitTransaction('OUT')"
+              class="flex-1 sm:flex-initial px-4 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Simpan Keluar
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Header Input Kolom: Tanggal, No Document, Keterangan -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3">
+          <!-- Tanggal (Hanya teks Tanggal, tanpa format dd-mm-yyyy) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal</label>
+            <input 
+              type="date" 
+              id="keluar_tanggal" 
+              class="w-full px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-gray-50"
+            />
+          </div>
+
+          <!-- No Document (Otomatis awal RPK-2026-000001) -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1 flex items-center justify-between">
+              <span>No Document</span>
+              <span class="text-[10px] text-rose-700 font-semibold">(Otomatis Bertambah)</span>
+            </label>
+            <input 
+              type="text" 
+              id="keluar_noDokumen" 
+              readonly
+              class="w-full px-3 py-2 text-xs font-mono font-bold text-rose-900 bg-rose-50/70 border border-rose-300 rounded-lg cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Keterangan Dropdown: Untuk Toko, Repack Ulang, Kiriman Custumer, isi sendiri -->
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan</label>
+            <div class="space-y-1.5">
+              <select 
+                id="keluar_keteranganSelect" 
+                onchange="handleKeteranganChange('keluar')"
+                class="w-full px-3 py-2 text-xs font-medium border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 bg-white"
+              >
+                <option value="">-- Pilih Keterangan Keluar --</option>
+                <option value="Untuk Toko">Untuk Toko</option>
+                <option value="Repack Ulang">Repack Ulang</option>
+                <option value="Kiriman Custumer">Kiriman Custumer</option>
+                <option value="isi sendiri">isi sendiri</option>
+              </select>
+              <input 
+                type="text" 
+                id="keluar_keteranganCustom" 
+                placeholder="Tulis keterangan custom disini..." 
+                class="hidden w-full px-3 py-1.5 text-xs border border-rose-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-rose-50/50"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Card: Input Items Keluar -->
+      <div class="bg-white rounded-xl shadow-xs border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+          <div class="font-bold text-xs text-gray-700">Daftar Barang Keluar</div>
+          <button 
+            type="button" 
+            onclick="addTableRow('OUT')"
+            class="px-2.5 py-1 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Tambah Baris
+          </button>
+        </div>
+
+        <div class="w-full">
+          <table class="w-full table-fixed text-left text-xs">
+            <thead class="bg-gray-100/80 text-gray-700 font-bold border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="w-[5%] py-2.5 px-2 text-center">No</th>
+                <th class="w-[38%] py-2.5 px-3">Pilih / Ketik Barang</th>
+                <th class="w-[12%] py-2.5 px-2 text-center">Satuan</th>
+                <th class="w-[15%] py-2.5 px-2 text-right">Stok Tersedia</th>
+                <th class="w-[25%] py-2.5 px-2 text-right">Qty Keluar</th>
+                <th class="w-[5%] py-2.5 px-1 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-keluar" class="divide-y divide-gray-100">
+              <!-- Diisi otomatis oleh baris input JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer Total Summary -->
+        <div class="bg-rose-50/60 px-4 py-3 border-t border-rose-100 flex items-center justify-between text-xs">
+          <div class="text-rose-900 font-medium">
+            Total Baris: <span id="totalRows-OUT" class="font-bold">0</span> item
+          </div>
+          <div class="text-rose-900 font-medium flex items-center gap-4">
+            <span>Total Qty Keluar:</span>
+            <span id="totalQty-OUT" class="text-base font-black text-rose-800">0</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 4: INPUT BARANG BARU ================= -->
+    <section id="view-baru" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-2xl shadow-xs border border-emerald-100 p-6 max-w-2xl mx-auto">
+        <div class="flex items-center gap-3 pb-4 border-b border-gray-100">
+          <div class="p-3 bg-emerald-50 rounded-xl text-emerald-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-gray-900">3. Input Barang Baru</h2>
+            <p class="text-xs text-gray-500">Daftarkan item / SKU baru ke database katalog gudang</p>
+          </div>
+        </div>
+
+        <form id="formBarangBaru" onsubmit="handleTambahBarangBaru(event)" class="space-y-4 pt-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Kode Barang / SKU *</label>
+              <input type="text" id="new_kode" required placeholder="Contoh: RPK-101 atau 0200161" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"/>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Satuan *</label>
+              <input type="text" id="new_satuan" required placeholder="Contoh: PCS, KG, BAG, SAK" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"/>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Nama Barang *</label>
+            <input type="text" id="new_nama" required placeholder="Masukkan nama lengkap barang" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"/>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Lokasi / Rak Gudang</label>
+              <input type="text" id="new_lokasi" placeholder="Contoh: Stok Gdg PKL, Rak A-1" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white"/>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 mb-1">Stok Awal</label>
+              <input type="number" id="new_stok" min="0" value="0" class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white font-bold text-emerald-800"/>
+            </div>
+          </div>
+
+          <div class="pt-4 flex items-center justify-end gap-2 border-t border-gray-100">
+            <button type="reset" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs">Reset</button>
+            <button type="submit" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow-xs transition-colors flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Simpan Barang Baru
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ================= VIEW 5: KELOLA / EDIT / HAPUS BARANG ================= -->
+    <section id="view-kelola" class="tab-content hidden space-y-4">
+      <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div>
+            <h2 class="text-base sm:text-lg font-black text-gray-900 flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+              4. Edit / Hapus Data Barang (Master Katalog)
+            </h2>
+            <p class="text-xs text-gray-500">Ubah detail barang, perbaiki nama/satuan/lokasi, atau hapus item dari katalog.</p>
+          </div>
+          <button onclick="exportKatalogExcel()" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Ekspor Katalog .xlsx
+          </button>
+        </div>
+
+        <!-- Filter & Search Kelola -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative flex-1 min-w-[200px]">
+            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <input 
+              type="text" 
+              id="kelolaSearchInput" 
+              placeholder="Cari nama atau kode barang..." 
+              oninput="handleKelolaSearch(this.value)"
+              class="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+          <select id="kelolaLocationSelect" onchange="handleKelolaLocationFilter(this.value)" class="text-xs bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 font-medium">
+            <option value="ALL">Semua Lokasi</option>
+          </select>
+        </div>
+
+        <!-- Tabel Kelola -->
+        <div class="overflow-x-auto max-h-[500px] border border-gray-200 rounded-xl">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 border-b border-gray-200">
+              <tr>
+                <th class="py-2.5 px-3 w-10 text-center">No</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Kode Barang</th>
+                <th class="py-2.5 px-3">Nama Barang</th>
+                <th class="py-2.5 px-2 text-center">Satuan</th>
+                <th class="py-2.5 px-3">Lokasi</th>
+                <th class="py-2.5 px-3 text-right whitespace-nowrap">Stok Saat Ini</th>
+                <th class="py-2.5 px-2 text-center">Status</th>
+                <th class="py-2.5 px-3 text-center w-28">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="kelolaTableBody" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi otomatis oleh JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Kelola -->
+        <div class="flex items-center justify-between text-xs text-gray-500 pt-2">
+          <div>
+            Menampilkan <span id="kelolaPageStart" class="font-bold text-gray-800">1</span> - <span id="kelolaPageEnd" class="font-bold text-gray-800">25</span> dari <span id="kelolaTotalCount" class="font-bold text-gray-800">0</span> barang
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="btnKelolaPrev" onclick="changeKelolaPage(-1)" class="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded-md font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+              &larr; Prev
+            </button>
+            <span id="kelolaPageIndicator" class="px-2 py-1 font-mono font-bold text-gray-700">Hal 1 / 1</span>
+            <button id="btnKelolaNext" onclick="changeKelolaPage(1)" class="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded-md font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= VIEW 6: RIWAYAT STOK (KOLOM PERSIS SESUAI PERMINTAAN) ================= -->
+    <section id="view-riwayat" class="tab-content hidden space-y-4">
+      
+      <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="p-3 bg-emerald-50 rounded-xl text-emerald-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-gray-900 tracking-tight">5. Laporan / Riwayat Stok</h2>
+            <p class="text-xs text-gray-500">Log keluar masuk stok dengan kolom lengkap dan warna pembeda.</p>
+          </div>
+        </div>
+
+        <button 
+          type="button" 
+          onclick="exportRiwayatExcel()"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors self-start md:self-auto"
+        >
+          <svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Ekspor Laporan .xlsx
+        </button>
+      </div>
+
+      <!-- Filter Card Riwayat -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Dari Tanggal</label>
+            <input type="date" id="riwayatStartDate" onchange="filterRiwayat()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Sampai Tanggal</label>
+            <input type="date" id="riwayatEndDate" onchange="filterRiwayat()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Jenis Transaksi</label>
+            <select id="riwayatTypeFilter" onchange="filterRiwayat()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-800 focus:ring-2 focus:ring-emerald-500">
+              <option value="ALL">Semua (Masuk & Keluar)</option>
+              <option value="IN">Barang Masuk Saja</option>
+              <option value="OUT">Barang Keluar Saja</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Cari Dokumen / Barang</label>
+            <input type="text" id="riwayatSearch" placeholder="No Dok / Ket / Barang..." oninput="filterRiwayat()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 font-medium focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+        </div>
+
+        <!-- Summary Pills -->
+        <div class="pt-2 border-t border-gray-100 flex flex-wrap items-center gap-4 text-xs">
+          <div class="text-gray-500">Total Baris: <strong id="riwayatTotalRows" class="text-gray-900 font-bold">0</strong></div>
+          <div class="text-emerald-700">Total Masuk: <strong id="riwayatTotalMasuk" class="font-extrabold">+0</strong></div>
+          <div class="text-rose-700">Total Keluar: <strong id="riwayatTotalKeluar" class="font-extrabold">-0</strong></div>
+        </div>
+      </div>
+
+      <!-- Main Table Riwayat -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto max-h-[550px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="py-2.5 px-2.5 w-10 text-center">No</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Tanggal</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">No Document</th>
+                <th class="py-2.5 px-3">Keterangan</th>
+                <th class="py-2.5 px-3 text-right text-emerald-800 whitespace-nowrap bg-emerald-50/50">Masuk</th>
+                <th class="py-2.5 px-3 text-right text-rose-800 whitespace-nowrap bg-rose-50/50">Keluar</th>
+                <th class="py-2.5 px-3 text-right whitespace-nowrap">Stok Sebelum</th>
+                <th class="py-2.5 px-3 text-right whitespace-nowrap font-black">Stok Saat Ini</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Kode</th>
+                <th class="py-2.5 px-3">Nama Barang</th>
+                <th class="py-2.5 px-2 text-center">Satuan</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Lokasi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-riwayat" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi otomatis oleh JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 7: KARTU STOK ================= -->
+    <section id="view-kartu" class="tab-content hidden space-y-4">
+      
+      <!-- Top Card: Item Picker & Summary -->
+      <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+          <div class="flex items-center gap-3">
+            <div class="p-3 bg-emerald-50 rounded-xl text-emerald-700">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            </div>
+            <div>
+              <h2 class="text-lg font-black text-gray-900">6. Kartu Stok Masing-masing</h2>
+              <p class="text-xs text-gray-500">Buku besar mutasi masuk dan keluar per masing-masing barang</p>
+            </div>
+          </div>
+
+          <button onclick="exportKartuStokExcel()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors">
+            <svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Ekspor Kartu .xlsx
+          </button>
+        </div>
+
+        <!-- Dropdown Pilih Barang -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Pilih Barang untuk Kartu Stok</label>
+            <select id="kartuItemSelect" onchange="loadKartuStok(this.value)" class="w-full px-3 py-2 text-xs font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
+              <!-- Diisi daftar barang -->
+            </select>
+          </div>
+          
+          <!-- Detail Box Barang Terpilih -->
+          <div id="kartuDetailBox" class="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-xl flex items-center justify-between text-xs">
+            <div>
+              <div id="kartuNama" class="font-black text-emerald-950 text-sm">Pilih Barang</div>
+              <div id="kartuMeta" class="text-emerald-700 text-[11px] mt-0.5">Kode: - | Satuan: - | Lokasi: -</div>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Stok Saat Ini</div>
+              <div id="kartuStokValue" class="text-2xl font-black text-emerald-800">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabel Buku Besar Kartu Stok -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 font-bold text-xs text-gray-700">
+          Riwayat Pergerakan Kartu Stok
+        </div>
+        <div class="overflow-x-auto max-h-[500px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold sticky top-0 z-10 border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="py-2.5 px-3 w-10 text-center">No</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">Tanggal</th>
+                <th class="py-2.5 px-3 whitespace-nowrap">No Dokumen</th>
+                <th class="py-2.5 px-4">Keterangan</th>
+                <th class="py-2.5 px-3 text-right text-emerald-800 whitespace-nowrap bg-emerald-50/50">Masuk (+)</th>
+                <th class="py-2.5 px-3 text-right text-rose-800 whitespace-nowrap bg-rose-50/50">Keluar (-)</th>
+                <th class="py-2.5 px-3 text-right whitespace-nowrap">Stok Sblm</th>
+                <th class="py-2.5 px-3 text-right font-black whitespace-nowrap text-emerald-900">Saldo Akhir</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-kartu" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi baris mutasi kartu -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 8: PRODUKSI BARANG (KEMAS ULANG) ================= -->
+    <section id="view-produksi" class="tab-content hidden space-y-5">
+
+      <!-- Top Header Produksi -->
+      <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Produksi &amp; Kemas Ulang</span>
+            <span class="text-[11px] text-gray-400">Gudang Repack</span>
+          </div>
+          <h2 class="text-lg font-black text-gray-900 mt-1">3. Produksi Barang (Kemas Ulang)</h2>
+          <p class="text-xs text-gray-500">Contoh: Amonia 1 kg dikemas ulang menjadi Amonia 500 gr. Kolom Keluar otomatis mengurangi stok &amp; Masuk otomatis menambah stok.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="createNewProdSheet()" class="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            + Lembar Baru
+          </button>
+          <button type="button" onclick="exportProduksiExcel()" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Ekspor Produksi .xlsx
+          </button>
+        </div>
+      </div>
+
+      <!-- Form Input Produksi -->
+      <div class="bg-slate-100 rounded-2xl border border-slate-300 p-4 sm:p-5 space-y-4">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Produksi</label>
+            <input type="date" id="prod_tanggal" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-slate-50 font-medium focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">No Document</label>
+            <input type="text" id="prod_noDokumen" class="w-full px-3 py-1.5 text-xs border border-emerald-300 rounded-lg bg-emerald-50/70 font-mono font-bold text-emerald-950 focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan Produksi</label>
+            <input type="text" id="prod_keterangan" placeholder="Contoh: Kemas ulang Amonia 1kg ke 500gr" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg bg-slate-50 font-medium focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-300 shadow-xs overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-200 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-300 text-[11px]">
+              <tr>
+                <th class="py-2.5 px-2.5 w-10 text-center">No</th>
+                <th class="py-2.5 px-3 w-28">Kode</th>
+                <th class="py-2.5 px-3 min-w-[220px]">Nama Barang</th>
+                <th class="py-2.5 px-3 w-32 text-right whitespace-nowrap">Stok Terkini</th>
+                <th class="py-2.5 px-3 w-28 text-right bg-rose-100/70 text-rose-900">Keluar (-)</th>
+                <th class="py-2.5 px-3 w-28 text-right bg-emerald-100/70 text-emerald-900">Masuk (+)</th>
+                <th class="py-2.5 px-2 w-12 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-produksi" class="divide-y divide-slate-200 bg-white">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div class="flex items-center gap-4 text-xs text-gray-700">
+            <button type="button" onclick="addProdRow()" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-emerald-800 border border-emerald-300 rounded-lg font-bold shadow-2xs flex items-center gap-1">
+              + Tambah Baris Barang
+            </button>
+            <span>Total Keluar: <strong id="prodTotalKeluar" class="text-rose-700 font-mono">-0</strong></span>
+            <span>Total Masuk: <strong id="prodTotalMasuk" class="text-emerald-700 font-mono">+0</strong></span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="createNewProdSheet()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold">Reset</button>
+            <button type="button" onclick="submitProduction()" class="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-sm">Save Produksi</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Daftar Document Produksi -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">Daftar Document Produksi (<span id="prodDocCount">0</span> dokumen)</span>
+          <span class="text-[11px] text-gray-400">Klik baris dokumen untuk membuka jendela hasil inputan &amp; edit</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Dari Tanggal</label>
+            <input type="date" id="prodStartDate" onchange="renderProduksiHistory()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Sampai Tanggal</label>
+            <input type="date" id="prodEndDate" onchange="renderProduksiHistory()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Jenis Mutasi</label>
+            <select id="prodMutasiFilter" onchange="renderProduksiHistory()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+              <option value="ALL">Semua (Keluar &amp; Masuk)</option>
+              <option value="KELUAR">Ada Barang Keluar</option>
+              <option value="MASUK">Ada Barang Masuk</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Lokasi Barang</label>
+            <select id="prodLocationFilter" onchange="renderProduksiHistory()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+              <option value="ALL">Semua Lokasi</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Cari Dokumen / Barang</label>
+            <input type="text" id="prodSearchInput" oninput="renderProduksiHistory()" placeholder="No Doc / Ket / Barang..." class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Daftar Document Produksi: Tanggal - No Document - Keterangan -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto max-h-[450px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="py-3 px-4 whitespace-nowrap">Tanggal</th>
+                <th class="py-3 px-4 whitespace-nowrap">No Document</th>
+                <th class="py-3 px-4">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-prod-docs" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= VIEW 9: DAFTAR DOCUMENT TRANSAKSI ================= -->
+    <section id="view-dokumen" class="tab-content hidden space-y-4">
+
+      <div class="bg-white rounded-2xl shadow-xs border border-gray-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="p-3 bg-emerald-50 rounded-xl text-emerald-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-black text-gray-900">6. Daftar Document Transaksi</h2>
+            <p class="text-xs text-gray-500">Klik baris dokumen untuk membuka jendela hasil input dan melakukan edit transaksi.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="switchTab('dashboard')" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold">Kembali ke Dashboard</button>
+          <button type="button" onclick="switchTab('riwayat')" class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold">Riwayat Lengkap</button>
+          <button type="button" onclick="exportRiwayatExcel()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-xs">Ekspor Excel .xlsx</button>
+        </div>
+      </div>
+
+      <!-- Filter Daftar Document -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Dari Tanggal</label>
+            <input type="date" id="dokStartDate" onchange="renderDokumenTable()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Sampai Tanggal</label>
+            <input type="date" id="dokEndDate" onchange="renderDokumenTable()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Jenis Document</label>
+            <select id="dokTypeFilter" onchange="renderDokumenTable()" class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+              <option value="ALL">Semua (Masuk &amp; Keluar)</option>
+              <option value="IN">Masuk (IN)</option>
+              <option value="OUT">Keluar (OUT)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1">Cari Document / Barang</label>
+            <input type="text" id="dokSearchInput" oninput="renderDokumenTable()" placeholder="No Doc, keterangan, barang..." class="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/>
+          </div>
+        </div>
+        <div class="text-xs text-gray-500">Total Document: <strong id="dokTotalCount" class="text-gray-900">0</strong></div>
+      </div>
+
+      <!-- Table Daftar Document: Tanggal - No Document - Keterangan - Total Qty -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div class="overflow-x-auto max-h-[540px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-gray-100 text-gray-700 font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-gray-200 text-[11px]">
+              <tr>
+                <th class="py-3 px-4 whitespace-nowrap">Tanggal</th>
+                <th class="py-3 px-4 whitespace-nowrap">No Document</th>
+                <th class="py-3 px-4">Keterangan</th>
+                <th class="py-3 px-4 text-right whitespace-nowrap">Total Qty</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-dokumen" class="divide-y divide-gray-100 bg-white font-medium">
+              <!-- Diisi JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= MODAL DETAIL & EDIT DOCUMENT TRANSAKSI ================= -->
+  <div id="docDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-5" onclick="closeDocDetailModal()">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden" onclick="event.stopPropagation()">
+      <div class="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span id="docModalBadge" class="px-2 py-0.5 rounded text-[11px] font-extrabold uppercase bg-emerald-600 text-white">Hasil Input</span>
+          <span id="docModalTitle" class="font-mono font-bold text-sm sm:text-base">-</span>
+          <span id="docModalDate" class="text-emerald-200 text-xs">(-)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnDocStartEdit" onclick="startEditDocumentModal()" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-lg text-xs font-extrabold shadow-xs">Edit</button>
+          <button type="button" id="btnDocCancelEdit" onclick="cancelEditDocumentModal()" class="hidden px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold">Batal</button>
+          <button type="button" id="btnDocSaveEdit" onclick="saveEditedDocument()" class="hidden px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-lg text-xs font-extrabold shadow-xs">Simpan Perubahan</button>
+          <button type="button" onclick="closeDocDetailModal()" class="p-1.5 hover:bg-emerald-700 rounded-lg text-emerald-200 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+      </div>
+
+      <div id="docModalBody" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        <!-- View / Edit mode rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL DETAIL & EDIT PRODUKSI ================= -->
+  <div id="prodDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-5" onclick="closeProdDetailModal()">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden" onclick="event.stopPropagation()">
+      <div class="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="px-2 py-0.5 rounded text-[11px] font-extrabold uppercase bg-amber-400 text-amber-950">Hasil Input Produksi</span>
+          <span id="prodModalTitle" class="font-mono font-bold text-sm sm:text-base">-</span>
+          <span id="prodModalDate" class="text-emerald-200 text-xs">(-)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnProdStartEdit" onclick="startEditProductionModal()" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-amber-950 rounded-lg text-xs font-extrabold shadow-xs">Edit</button>
+          <button type="button" id="btnProdCancelEdit" onclick="cancelEditProductionModal()" class="hidden px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold">Batal</button>
+          <button type="button" id="btnProdSaveEdit" onclick="saveEditedProductionModal()" class="hidden px-3.5 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-lg text-xs font-extrabold shadow-xs">Simpan Perubahan</button>
+          <button type="button" onclick="closeProdDetailModal()" class="p-1.5 hover:bg-emerald-700 rounded-lg text-emerald-200 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+      </div>
+
+      <div id="prodModalBody" class="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+        <!-- View / Edit mode rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL QUICK DETAIL BARANG (DARI SEARCH HEADER) ================= -->
+  <div id="quickDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-200 space-y-4 animate-fadeIn">
+      <div class="flex items-start justify-between pb-3 border-b border-gray-100">
+        <div>
+          <span class="text-[10px] font-mono font-bold text-emerald-700 uppercase bg-emerald-50 px-2 py-0.5 rounded">Info Barang</span>
+          <h3 id="qdNama" class="text-base font-black text-gray-900 mt-1">-</h3>
+        </div>
+        <button onclick="closeQuickDetailModal()" class="p-1 text-gray-400 hover:text-gray-600 rounded-lg">&times;</button>
+      </div>
+
+      <div class="space-y-2 text-xs text-gray-700">
+        <div class="flex justify-between py-1 border-b border-gray-50"><span class="text-gray-500">Kode:</span> <span id="qdKode" class="font-mono font-bold text-gray-900">-</span></div>
+        <div class="flex justify-between py-1 border-b border-gray-50"><span class="text-gray-500">Satuan:</span> <span id="qdSatuan" class="font-bold text-gray-900">-</span></div>
+        <div class="flex justify-between py-1 border-b border-gray-50"><span class="text-gray-500">Lokasi:</span> <span id="qdLokasi" class="font-medium text-gray-900">-</span></div>
+        <div class="flex justify-between py-2 items-center"><span class="text-gray-700 font-bold">Stok Saat Ini:</span> <span id="qdStok" class="text-xl font-black text-emerald-700">0</span></div>
+      </div>
+
+      <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+        <button onclick="openKartuFromQuickDetail()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs">Buka Kartu Stok</button>
+        <button onclick="closeQuickDetailModal()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL EDIT BARANG ================= -->
+  <div id="editItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-200 space-y-4 animate-fadeIn">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+        <h3 class="text-sm font-black text-gray-900 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+          Edit Data Barang
+        </h3>
+        <button onclick="closeEditModal()" class="p-1 text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+
+      <form onsubmit="handleSaveEdit(event)" class="space-y-3">
+        <input type="hidden" id="edit_id"/>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Kode Barang</label>
+          <input type="text" id="edit_kode" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-mono"/>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Nama Barang *</label>
+          <input type="text" id="edit_nama" required class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-semibold"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Satuan *</label>
+            <input type="text" id="edit_satuan" required class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Lokasi / Rak</label>
+            <input type="text" id="edit_lokasi" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500"/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Penyesuaian Stok Saat Ini</label>
+          <input type="number" id="edit_stok" min="0" class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-800"/>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2 border-t border-gray-100">
+          <button type="button" onclick="closeEditModal()" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs">Batal</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow-xs">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs border border-slate-700 transition-all">
+    <span id="toastMsg">Notifikasi</span>
+  </div>
+
+  <!-- ================= LOGIKA JAVASCRIPT LENGKAP ================= -->
+  <script>
+    // Server Initial Data disuntikkan langsung oleh doGet()
+    var SERVER_INITIAL_DATA = null;
+    try {
+      SERVER_INITIAL_DATA = <?!= initialDataJson ?>;
+    } catch (e) {
+      SERVER_INITIAL_DATA = null;
+    }
+
+    // STATE APLIKASI
+    var STATE = {
+      items: [],
+      transactions: [],
+      productions: [],
+      nextDocNumber: 'RPK-2026-000001',
+      nextProdDocNumber: 'PRD-2026-000001',
+      activeTab: 'dashboard',
+      dashPage: 1,
+      dashPageSize: 25,
+      dashSearch: '',
+      dashLocation: 'ALL',
+      dashStockFilter: 'ALL',
+      kelolaPage: 1,
+      kelolaPageSize: 25,
+      kelolaSearch: '',
+      kelolaLocation: 'ALL',
+      selectedItemForKartu: null,
+      quickDetailItem: null,
+      selectedDocId: null,
+      isEditingDoc: false,
+      selectedProdId: null,
+      isEditingProdModal: false
+    };
+
+    // INISIALISASI SAAT DOM READY
+    window.addEventListener('DOMContentLoaded', function() {
+      // 1. Ambil data server jika ada, atau fallback ke cache localStorage
+      if (SERVER_INITIAL_DATA && Array.isArray(SERVER_INITIAL_DATA.items) && SERVER_INITIAL_DATA.items.length > 0) {
+        STATE.items = SERVER_INITIAL_DATA.items;
+        STATE.transactions = SERVER_INITIAL_DATA.transactions || [];
+        STATE.productions = SERVER_INITIAL_DATA.productions || [];
+        STATE.nextDocNumber = SERVER_INITIAL_DATA.nextDocNumber || generateNextDocNumber();
+        STATE.nextProdDocNumber = SERVER_INITIAL_DATA.nextProdDocNumber || generateNextProdDocNumber();
+        saveToLocalCache();
+      } else {
+        var cached = localStorage.getItem('gudang_repack_state_v3');
+        if (cached) {
+          try {
+            var parsed = JSON.parse(cached);
+            STATE.items = parsed.items || [];
+            STATE.transactions = parsed.transactions || [];
+            STATE.productions = parsed.productions || [];
+            STATE.nextDocNumber = parsed.nextDocNumber || generateNextDocNumber();
+            STATE.nextProdDocNumber = parsed.nextProdDocNumber || generateNextProdDocNumber();
+          } catch (e) {}
+        }
+      }
+
+      // 2. Set default tanggal hari ini
+      var today = getTodayDate();
+      document.getElementById('masuk_tanggal').value = today;
+      document.getElementById('keluar_tanggal').value = today;
+      var prodTglEl = document.getElementById('prod_tanggal');
+      if (prodTglEl) prodTglEl.value = today;
+
+      // 3. Set No Document
+      updateDocNumbers();
+
+      // 4. Render Dashboard & components
+      renderAllViews();
+
+      // 5. Initialize table rows for IN, OUT & Produksi
+      addTableRow('IN');
+      addTableRow('OUT');
+      addProdRow();
+      addProdRow();
+    });
+
+    function saveToLocalCache() {
+      try {
+        localStorage.setItem('gudang_repack_state_v3', JSON.stringify({
+          items: STATE.items,
+          transactions: STATE.transactions,
+          productions: STATE.productions,
+          nextDocNumber: STATE.nextDocNumber,
+          nextProdDocNumber: STATE.nextProdDocNumber
+        }));
+      } catch (e) {}
+    }
+
+    function getTodayDate() {
+      var now = new Date();
+      var y = now.getFullYear();
+      var m = String(now.getMonth() + 1).padStart(2, '0');
+      var d = String(now.getDate()).padStart(2, '0');
+      return y + '-' + m + '-' + d;
+    }
+
+    function generateNextDocNumber() {
+      var yyyy = new Date().getFullYear();
+      var maxSeq = 0;
+      STATE.transactions.forEach(function(t) {
+        var m = (t.noDokumen || '').match(/RPK-(?:\d{4}-)?(\d+)/i);
+        if (m && m[1]) {
+          var n = parseInt(m[1], 10);
+          if (!isNaN(n) && n > maxSeq) maxSeq = n;
+        }
+      });
+      return 'RPK-' + yyyy + '-' + String(maxSeq + 1).padStart(6, '0');
+    }
+
+    function generateNextProdDocNumber() {
+      var yyyy = new Date().getFullYear();
+      var maxSeq = 0;
+      STATE.productions.forEach(function(p) {
+        var m = (p.noDokumen || '').match(/PRD-(?:\d{4}-)?(\d+)/i);
+        if (m && m[1]) {
+          var n = parseInt(m[1], 10);
+          if (!isNaN(n) && n > maxSeq) maxSeq = n;
+        }
+      });
+      return 'PRD-' + yyyy + '-' + String(maxSeq + 1).padStart(6, '0');
+    }
+
+    function updateDocNumbers() {
+      var num = STATE.nextDocNumber || generateNextDocNumber();
+      document.getElementById('masuk_noDokumen').value = num;
+      document.getElementById('keluar_noDokumen').value = num;
+      var prodNoEl = document.getElementById('prod_noDokumen');
+      if (prodNoEl) prodNoEl.value = STATE.nextProdDocNumber || generateNextProdDocNumber();
+    }
+
+    // ================= TAB NAVIGATION =================
+    function switchTab(tabId) {
+      STATE.activeTab = tabId;
+
+      // Hide all tabs
+      var contents = document.querySelectorAll('.tab-content');
+      contents.forEach(function(c) { c.classList.add('hidden'); });
+
+      // Show selected tab
+      var activeEl = document.getElementById('view-' + tabId);
+      if (activeEl) activeEl.classList.remove('hidden');
+
+      // Update button styling
+      var btns = document.querySelectorAll('.tab-btn');
+      btns.forEach(function(b) {
+        b.classList.remove('bg-emerald-700', 'text-white', 'shadow-xs');
+        b.classList.add('text-emerald-100', 'hover:bg-emerald-800');
+      });
+
+      var activeBtn = document.getElementById('tab-btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-emerald-100', 'hover:bg-emerald-800');
+        activeBtn.classList.add('bg-emerald-700', 'text-white', 'shadow-xs');
+      }
+
+      // Re-render specific views if needed
+      if (tabId === 'dashboard') {
+        renderDashboard();
+      } else if (tabId === 'kelola') {
+        renderKelolaTable();
+      } else if (tabId === 'riwayat') {
+        renderRiwayatTable();
+      } else if (tabId === 'kartu') {
+        populateKartuItemSelect();
+      } else if (tabId === 'dokumen') {
+        renderDokumenTable();
+      } else if (tabId === 'produksi') {
+        renderProduksiHistory();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderAllViews() {
+      renderDashboard();
+      populateLocationFilters();
+      renderKelolaTable();
+      renderRiwayatTable();
+      renderDokumenTable();
+      renderProduksiHistory();
+      populateKartuItemSelect();
+    }
+
+    // ================= DASHBOARD GUDANG LOGIC =================
+    function renderDashboard() {
+      // 1. Stats Calculation
+      var totalBarang = STATE.items.length;
+      var locations = getUniqueLocations();
+      var totalLokasi = locations.length;
+      var barangKosong = STATE.items.filter(function(i) { return Number(i.stok) === 0; });
+      var totalMutasi = STATE.transactions.length;
+
+      document.getElementById('statTotalBarang').innerText = totalBarang;
+      document.getElementById('statTotalLokasi').innerText = totalLokasi;
+      document.getElementById('statBarangKosong').innerText = barangKosong.length;
+      document.getElementById('statTotalMutasi').innerText = totalMutasi;
+
+      var inCount = STATE.transactions.filter(function(t) { return t.type === 'IN'; }).length;
+      var outCount = STATE.transactions.filter(function(t) { return t.type === 'OUT'; }).length;
+      document.getElementById('statMutasiDesc').innerText = '(' + inCount + ' In / ' + outCount + ' Out)';
+
+      // 2. Render Stock Table on Dashboard
+      renderDashboardStockTable();
+
+      // 3. Render Fast Moving
+      renderFastMoving();
+    }
+
+    function getUniqueLocations() {
+      var set = {};
+      STATE.items.forEach(function(it) {
+        if (it.lokasi) set[it.lokasi.trim()] = true;
+      });
+      return Object.keys(set).sort();
+    }
+
+    function populateLocationFilters() {
+      var locs = getUniqueLocations();
+      var dashSelect = document.getElementById('dashLocationSelect');
+      var kelolaSelect = document.getElementById('kelolaLocationSelect');
+      var prodLocSelect = document.getElementById('prodLocationFilter');
+
+      var currentDash = dashSelect.value;
+      var currentKelola = kelolaSelect.value;
+      var currentProdLoc = prodLocSelect ? prodLocSelect.value : 'ALL';
+
+      var optHtml = '<option value="ALL">Semua Lokasi</option>';
+      locs.forEach(function(l) {
+        optHtml += '<option value="' + escapeHtml(l) + '">' + escapeHtml(l) + '</option>';
+      });
+
+      dashSelect.innerHTML = optHtml;
+      kelolaSelect.innerHTML = optHtml;
+      if (prodLocSelect) prodLocSelect.innerHTML = optHtml;
+
+      dashSelect.value = currentDash || 'ALL';
+      kelolaSelect.value = currentKelola || 'ALL';
+      if (prodLocSelect) prodLocSelect.value = currentProdLoc || 'ALL';
+    }
+
+    function filterDashboardStock(mode) {
+      if (mode === 'EMPTY') {
+        STATE.dashStockFilter = 'EMPTY';
+        document.getElementById('dashFilterBadge').innerText = 'Stok Kosong (0)';
+      } else {
+        STATE.dashStockFilter = 'ALL';
+        document.getElementById('dashFilterBadge').innerText = 'Semua Barang';
+      }
+      STATE.dashPage = 1;
+      renderDashboardStockTable();
+      document.getElementById('dashTableBody').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function handleDashSearch(val) {
+      STATE.dashSearch = val.toLowerCase().trim();
+      STATE.dashPage = 1;
+      renderDashboardStockTable();
+    }
+
+    function handleDashLocationFilter(val) {
+      STATE.dashLocation = val;
+      STATE.dashPage = 1;
+      renderDashboardStockTable();
+    }
+
+    function getFilteredDashboardItems() {
+      return STATE.items.filter(function(item) {
+        // Search filter
+        if (STATE.dashSearch) {
+          var kd = (item.kode || '').toLowerCase();
+          var nm = (item.nama || '').toLowerCase();
+          var lk = (item.lokasi || '').toLowerCase();
+          if (kd.indexOf(STATE.dashSearch) === -1 && nm.indexOf(STATE.dashSearch) === -1 && lk.indexOf(STATE.dashSearch) === -1) {
+            return false;
+          }
+        }
+        // Location filter
+        if (STATE.dashLocation !== 'ALL' && item.lokasi !== STATE.dashLocation) {
+          return false;
+        }
+        // Stock filter
+        if (STATE.dashStockFilter === 'EMPTY' && Number(item.stok) !== 0) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function renderDashboardStockTable() {
+      var filtered = getFilteredDashboardItems();
+      var total = filtered.length;
+      var totalPages = Math.ceil(total / STATE.dashPageSize) || 1;
+      if (STATE.dashPage > totalPages) STATE.dashPage = totalPages;
+      if (STATE.dashPage < 1) STATE.dashPage = 1;
+
+      var start = (STATE.dashPage - 1) * STATE.dashPageSize;
+      var end = Math.min(start + STATE.dashPageSize, total);
+      var slice = filtered.slice(start, end);
+
+      var tbody = document.getElementById('dashTableBody');
+      if (slice.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400 font-normal">Tidak ada data barang yang sesuai filter.</td></tr>';
+      } else {
+        var html = '';
+        slice.forEach(function(item, idx) {
+          var rowNo = start + idx + 1;
+          var stok = Number(item.stok) || 0;
+          var stokBadgeClass = stok === 0 
+            ? 'bg-rose-100 text-rose-800 border border-rose-200' 
+            : (stok <= 5 ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200');
+          var statusBadge = stok === 0 
+            ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">HABIS</span>'
+            : (stok <= 5 ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">MENIPIS</span>' : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">AMAN</span>');
+
+          html += '<tr class="hover:bg-emerald-50/40 transition-colors">' +
+            '<td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">' + rowNo + '</td>' +
+            '<td class="py-2 px-3 font-mono font-bold text-emerald-900 whitespace-nowrap text-[11px]">' + escapeHtml(item.kode || '-') + '</td>' +
+            '<td class="py-2 px-3 font-bold text-gray-900 max-w-[280px] truncate" title="' + escapeHtml(item.nama) + '">' + escapeHtml(item.nama) + '</td>' +
+            '<td class="py-2 px-2.5 text-center text-gray-600 font-medium text-[11px]">' + escapeHtml(item.satuan || 'Pcs') + '</td>' +
+            '<td class="py-2 px-3 text-gray-600 whitespace-nowrap text-[11px]">' + escapeHtml(item.lokasi || '-') + '</td>' +
+            '<td class="py-2 px-3 text-right whitespace-nowrap"><span class="inline-block px-2.5 py-0.5 rounded-full font-black text-xs ' + stokBadgeClass + '">' + stok + '</span></td>' +
+            '<td class="py-2 px-2.5 text-center whitespace-nowrap">' + statusBadge + '</td>' +
+            '<td class="py-2 px-3 text-center whitespace-nowrap">' +
+              '<button onclick="openKartuForItem(\'' + escapeJsArg(item.id || item.nama) + '\')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded font-bold text-[11px] border border-emerald-200 mr-1.5 transition-colors">Kartu</button>' +
+              '<button onclick="openEditModalForItem(\'' + escapeJsArg(item.id || item.nama) + '\')" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded font-bold text-[11px] transition-colors">Edit</button>' +
+            '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      document.getElementById('dashPageStart').innerText = total === 0 ? 0 : start + 1;
+      document.getElementById('dashPageEnd').innerText = end;
+      document.getElementById('dashTotalCount').innerText = total;
+      document.getElementById('dashPageIndicator').innerText = 'Hal ' + STATE.dashPage + ' / ' + totalPages;
+      document.getElementById('btnDashPrev').disabled = STATE.dashPage <= 1;
+      document.getElementById('btnDashNext').disabled = STATE.dashPage >= totalPages;
+    }
+
+    function changeDashPage(delta) {
+      STATE.dashPage += delta;
+      renderDashboardStockTable();
+    }
+
+    function renderFastMoving() {
+      var container = document.getElementById('fastMovingContainer');
+      var moveMap = {};
+
+      STATE.transactions.forEach(function(tx) {
+        if (!tx.items) return;
+        tx.items.forEach(function(entry) {
+          var id = entry.itemId || entry.nama;
+          if (!moveMap[id]) {
+            moveMap[id] = {
+              item: findItemByIdOrName(id, entry.nama),
+              nama: entry.nama,
+              kode: entry.kode,
+              satuan: entry.satuan,
+              lokasi: entry.lokasi,
+              txCount: 0,
+              totalOut: 0,
+              totalIn: 0
+            };
+          }
+          moveMap[id].txCount++;
+          if (tx.type === 'OUT') {
+            moveMap[id].totalOut += Number(entry.qty) || 0;
+          } else {
+            moveMap[id].totalIn += Number(entry.qty) || 0;
+          }
+        });
+      });
+
+      var list = Object.values(moveMap).filter(function(m) {
+        return m.totalOut > 0 || m.txCount > 0;
+      }).sort(function(a, b) {
+        return b.totalOut - a.totalOut || b.txCount - a.txCount;
+      }).slice(0, 8);
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="py-8 px-4 text-center bg-gray-50/70 border border-dashed border-gray-200 rounded-xl">' +
+          '<p class="text-xs font-semibold text-gray-600">Belum ada transaksi keluar/masuk yang tercatat</p>' +
+          '<p class="text-[11px] text-gray-400 mt-0.5">Daftar barang fast moving akan muncul secara otomatis setelah Anda menginput barang keluar pada menu Input Barang Keluar.</p>' +
+        '</div>';
+        return;
+      }
+
+      var html = '<div class="overflow-x-auto rounded-xl border border-gray-200">' +
+        '<table class="w-full text-left text-xs">' +
+          '<thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200">' +
+            '<tr>' +
+              '<th class="py-2 px-3 text-center w-12">Ranking</th>' +
+              '<th class="py-2 px-3">Kode</th>' +
+              '<th class="py-2 px-3">Nama Barang</th>' +
+              '<th class="py-2 px-2 text-center">Satuan</th>' +
+              '<th class="py-2 px-3 text-center">Frekuensi</th>' +
+              '<th class="py-2 px-3 text-right font-bold text-rose-700">Total Keluar</th>' +
+              '<th class="py-2 px-3 text-right font-bold text-emerald-800">Sisa Stok</th>' +
+              '<th class="py-2 px-3 text-center">Aksi</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody class="divide-y divide-gray-100 bg-white font-medium">';
+
+      list.forEach(function(entry, idx) {
+        var it = entry.item || { nama: entry.nama, kode: entry.kode, satuan: entry.satuan, stok: 0 };
+        var badgeColor = idx === 0 ? 'bg-amber-400 text-amber-950 font-black' : (idx === 1 ? 'bg-gray-200 text-gray-800 font-bold' : (idx === 2 ? 'bg-amber-700 text-white font-bold' : 'bg-gray-100 text-gray-700'));
+        html += '<tr class="hover:bg-emerald-50/30">' +
+          '<td class="py-2 px-3 text-center"><span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ' + badgeColor + '">#' + (idx + 1) + '</span></td>' +
+          '<td class="py-2 px-3 font-mono font-bold text-gray-800">' + escapeHtml(it.kode || '-') + '</td>' +
+          '<td class="py-2 px-3 font-bold text-gray-900">' + escapeHtml(it.nama) + '</td>' +
+          '<td class="py-2 px-2 text-center text-gray-600">' + escapeHtml(it.satuan || 'Pcs') + '</td>' +
+          '<td class="py-2 px-3 text-center"><span class="px-2 py-0.5 bg-gray-100 rounded text-gray-700 font-bold text-[10px]">' + entry.txCount + ' kali</span></td>' +
+          '<td class="py-2 px-3 text-right font-black text-rose-600">-' + entry.totalOut + '</td>' +
+          '<td class="py-2 px-3 text-right font-black text-emerald-800">' + (it.stok || 0) + '</td>' +
+          '<td class="py-2 px-3 text-center"><button onclick="openKartuForItem(\'' + escapeJsArg(it.id || it.nama) + '\')" class="px-2 py-1 bg-emerald-700 text-white rounded text-[10px] font-bold shadow-2xs">Kartu Stok</button></td>' +
+        '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    // ================= KELOLA BARANG LOGIC =================
+    function handleKelolaSearch(val) {
+      STATE.kelolaSearch = val.toLowerCase().trim();
+      STATE.kelolaPage = 1;
+      renderKelolaTable();
+    }
+
+    function handleKelolaLocationFilter(val) {
+      STATE.kelolaLocation = val;
+      STATE.kelolaPage = 1;
+      renderKelolaTable();
+    }
+
+    function getFilteredKelolaItems() {
+      return STATE.items.filter(function(item) {
+        if (STATE.kelolaSearch) {
+          var kd = (item.kode || '').toLowerCase();
+          var nm = (item.nama || '').toLowerCase();
+          if (kd.indexOf(STATE.kelolaSearch) === -1 && nm.indexOf(STATE.kelolaSearch) === -1) {
+            return false;
+          }
+        }
+        if (STATE.kelolaLocation !== 'ALL' && item.lokasi !== STATE.kelolaLocation) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function renderKelolaTable() {
+      var filtered = getFilteredKelolaItems();
+      var total = filtered.length;
+      var totalPages = Math.ceil(total / STATE.kelolaPageSize) || 1;
+      if (STATE.kelolaPage > totalPages) STATE.kelolaPage = totalPages;
+      if (STATE.kelolaPage < 1) STATE.kelolaPage = 1;
+
+      var start = (STATE.kelolaPage - 1) * STATE.kelolaPageSize;
+      var end = Math.min(start + STATE.kelolaPageSize, total);
+      var slice = filtered.slice(start, end);
+
+      var tbody = document.getElementById('kelolaTableBody');
+      if (slice.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400 font-normal">Tidak ada data barang.</td></tr>';
+      } else {
+        var html = '';
+        slice.forEach(function(item, idx) {
+          var rowNo = start + idx + 1;
+          var stok = Number(item.stok) || 0;
+          var stokBadgeClass = stok === 0 ? 'bg-rose-100 text-rose-800' : (stok <= 5 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800');
+          html += '<tr class="hover:bg-gray-50">' +
+            '<td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">' + rowNo + '</td>' +
+            '<td class="py-2 px-3 font-mono font-bold text-gray-800 whitespace-nowrap text-[11px]">' + escapeHtml(item.kode || '-') + '</td>' +
+            '<td class="py-2 px-3 font-bold text-gray-900 max-w-[280px] truncate">' + escapeHtml(item.nama) + '</td>' +
+            '<td class="py-2 px-2 text-center text-gray-600 text-[11px]">' + escapeHtml(item.satuan || 'Pcs') + '</td>' +
+            '<td class="py-2 px-3 text-gray-600 whitespace-nowrap text-[11px]">' + escapeHtml(item.lokasi || '-') + '</td>' +
+            '<td class="py-2 px-3 text-right whitespace-nowrap"><span class="inline-block px-2 py-0.5 rounded font-black text-xs ' + stokBadgeClass + '">' + stok + '</span></td>' +
+            '<td class="py-2 px-2 text-center text-[10px] font-bold text-gray-500">' + (item.status || 'AMAN') + '</td>' +
+            '<td class="py-2 px-3 text-center whitespace-nowrap">' +
+              '<button onclick="openEditModalForItem(\'' + escapeJsArg(item.id || item.nama) + '\')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold rounded text-[11px] border border-emerald-200 mr-1.5">Edit</button>' +
+              '<button onclick="handleDeleteItem(\'' + escapeJsArg(item.id || item.nama) + '\')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded text-[11px] border border-rose-200">Hapus</button>' +
+            '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      document.getElementById('kelolaPageStart').innerText = total === 0 ? 0 : start + 1;
+      document.getElementById('kelolaPageEnd').innerText = end;
+      document.getElementById('kelolaTotalCount').innerText = total;
+      document.getElementById('kelolaPageIndicator').innerText = 'Hal ' + STATE.kelolaPage + ' / ' + totalPages;
+      document.getElementById('btnKelolaPrev').disabled = STATE.kelolaPage <= 1;
+      document.getElementById('btnKelolaNext').disabled = STATE.kelolaPage >= totalPages;
+    }
+
+    function changeKelolaPage(delta) {
+      STATE.kelolaPage += delta;
+      renderKelolaTable();
+    }
+
+    // ================= EDIT MODAL =================
+    function openEditModalForItem(identifier) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+
+      document.getElementById('edit_id').value = item.id || item.nama;
+      document.getElementById('edit_kode').value = item.kode || '';
+      document.getElementById('edit_nama').value = item.nama;
+      document.getElementById('edit_satuan').value = item.satuan || 'Pcs';
+      document.getElementById('edit_lokasi').value = item.lokasi || '';
+      document.getElementById('edit_stok').value = item.stok || 0;
+
+      document.getElementById('editItemModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editItemModal').classList.add('hidden');
+    }
+
+    function handleSaveEdit(e) {
+      e.preventDefault();
+      var id = document.getElementById('edit_id').value;
+      var item = findItemByIdOrName(id, id);
+      if (!item) return;
+
+      item.kode = document.getElementById('edit_kode').value.trim();
+      item.nama = document.getElementById('edit_nama').value.trim();
+      item.satuan = document.getElementById('edit_satuan').value.trim();
+      item.lokasi = document.getElementById('edit_lokasi').value.trim();
+      var newStok = parseFloat(document.getElementById('edit_stok').value) || 0;
+      item.stok = newStok;
+      item.status = newStok === 0 ? 'HABIS' : (newStok <= 5 ? 'MENIPIS' : 'AMAN');
+
+      closeEditModal();
+      saveToLocalCache();
+      renderAllViews();
+      showToast('Perubahan data barang berhasil disimpan!');
+
+      // Sync ke backend Apps Script jika terhubung
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            if (data && data.items) {
+              STATE.items = data.items;
+              saveToLocalCache();
+              renderAllViews();
+            }
+          })
+          .apiUpdateItem({
+            id: item.id,
+            kode: item.kode,
+            nama: item.nama,
+            satuan: item.satuan,
+            lokasi: item.lokasi,
+            stok: item.stok
+          });
+      }
+    }
+
+    function handleDeleteItem(identifier) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+
+      if (!confirm('Apakah Anda yakin ingin menghapus barang "' + item.nama + '" dari katalog?')) {
+        return;
+      }
+
+      STATE.items = STATE.items.filter(function(i) {
+        return i !== item && i.id !== identifier && i.nama !== identifier;
+      });
+
+      saveToLocalCache();
+      renderAllViews();
+      showToast('Barang "' + item.nama + '" berhasil dihapus.');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.apiDeleteItem(item.kode || item.nama);
+      }
+    }
+
+    // ================= TAMBAH BARANG BARU =================
+    function handleTambahBarangBaru(e) {
+      e.preventDefault();
+      var kode = document.getElementById('new_kode').value.trim();
+      var nama = document.getElementById('new_nama').value.trim();
+      var satuan = document.getElementById('new_satuan').value.trim();
+      var lokasi = document.getElementById('new_lokasi').value.trim();
+      var stok = parseFloat(document.getElementById('new_stok').value) || 0;
+
+      if (!nama || !satuan) {
+        alert('Nama barang dan satuan wajib diisi!');
+        return;
+      }
+
+      var newItem = {
+        id: 'item_' + Date.now(),
+        kode: kode,
+        nama: nama,
+        satuan: satuan,
+        lokasi: lokasi || 'Gudang',
+        stok: stok,
+        status: stok === 0 ? 'HABIS' : (stok <= 5 ? 'MENIPIS' : 'AMAN')
+      };
+
+      STATE.items.unshift(newItem);
+      saveToLocalCache();
+      renderAllViews();
+
+      document.getElementById('formBarangBaru').reset();
+      showToast('Barang baru "' + nama + '" berhasil didaftarkan!');
+      switchTab('dashboard');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            if (data && data.items) {
+              STATE.items = data.items;
+              saveToLocalCache();
+              renderAllViews();
+            }
+          })
+          .apiAddItem(newItem);
+      }
+    }
+
+    // ================= RIWAYAT STOK =================
+    function filterRiwayat() {
+      renderRiwayatTable();
+    }
+
+    function getFlattenedTransactions() {
+      var start = document.getElementById('riwayatStartDate') ? document.getElementById('riwayatStartDate').value : '';
+      var end = document.getElementById('riwayatEndDate') ? document.getElementById('riwayatEndDate').value : '';
+      var typeFilter = document.getElementById('riwayatTypeFilter') ? document.getElementById('riwayatTypeFilter').value : 'ALL';
+      var search = document.getElementById('riwayatSearch') ? document.getElementById('riwayatSearch').value.toLowerCase().trim() : '';
+
+      var rows = [];
+      STATE.transactions.forEach(function(tx) {
+        if (start && tx.tanggal < start) return;
+        if (end && tx.tanggal > end) return;
+        if (typeFilter !== 'ALL' && tx.type !== typeFilter) return;
+
+        (tx.items || []).forEach(function(it) {
+          if (search) {
+            var doc = (tx.noDokumen || '').toLowerCase();
+            var ket = (tx.keterangan || '').toLowerCase();
+            var nm = (it.nama || '').toLowerCase();
+            var kd = (it.kode || '').toLowerCase();
+            if (doc.indexOf(search) === -1 && ket.indexOf(search) === -1 && nm.indexOf(search) === -1 && kd.indexOf(search) === -1) {
+              return;
+            }
+          }
+
+          rows.push({
+            txId: tx.id,
+            tanggal: tx.tanggal,
+            noDokumen: tx.noDokumen,
+            keterangan: tx.keterangan || '-',
+            type: tx.type,
+            kode: it.kode,
+            nama: it.nama,
+            satuan: it.satuan,
+            lokasi: it.lokasi,
+            qty: Number(it.qty) || 0,
+            stokSebelum: Number(it.stokSebelum) || 0,
+            stokSesudah: Number(it.stokSesudah) || 0
+          });
+        });
+      });
+
+      return rows.reverse();
+    }
+
+    function renderRiwayatTable() {
+      var rows = getFlattenedTransactions();
+      var tbody = document.getElementById('tbody-riwayat');
+      var totalMasuk = 0;
+      var totalKeluar = 0;
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="py-10 text-center text-gray-400">Tidak ada riwayat mutasi stok.</td></tr>';
+      } else {
+        var html = '';
+        rows.forEach(function(r, idx) {
+          var masukCell = r.type === 'IN' 
+            ? '<span class="inline-block px-2 py-0.5 rounded font-black text-xs text-emerald-800 bg-emerald-100/90 border border-emerald-300">+' + r.qty + '</span>' 
+            : '<span class="text-gray-300">-</span>';
+          var keluarCell = r.type === 'OUT' 
+            ? '<span class="inline-block px-2 py-0.5 rounded font-black text-xs text-rose-800 bg-rose-100/90 border border-rose-300">-' + r.qty + '</span>' 
+            : '<span class="text-gray-300">-</span>';
+
+          if (r.type === 'IN') totalMasuk += r.qty;
+          if (r.type === 'OUT') totalKeluar += r.qty;
+
+          html += '<tr class="hover:bg-gray-50 transition-colors">' +
+            '<td class="py-2 px-2.5 text-center text-gray-400 font-mono text-[11px]">' + (idx + 1) + '</td>' +
+            '<td class="py-2 px-3 font-mono font-medium text-gray-700 whitespace-nowrap text-[11px]">' + r.tanggal + '</td>' +
+            '<td class="py-2 px-3 font-mono font-bold text-emerald-900 whitespace-nowrap text-[11px]">' + escapeHtml(r.noDokumen) + '</td>' +
+            '<td class="py-2 px-3 text-gray-700 max-w-[140px] truncate text-[11px]" title="' + escapeHtml(r.keterangan) + '">' + escapeHtml(r.keterangan) + '</td>' +
+            '<td class="py-2 px-3 text-right whitespace-nowrap bg-emerald-50/40">' + masukCell + '</td>' +
+            '<td class="py-2 px-3 text-right whitespace-nowrap bg-rose-50/40">' + keluarCell + '</td>' +
+            '<td class="py-2 px-3 text-right font-medium text-gray-600 whitespace-nowrap text-[11px]">' + r.stokSebelum + '</td>' +
+            '<td class="py-2 px-3 text-right font-black text-gray-900 whitespace-nowrap text-xs">' + r.stokSesudah + '</td>' +
+            '<td class="py-2 px-3 font-mono text-gray-600 whitespace-nowrap text-[11px]">' + escapeHtml(r.kode || '-') + '</td>' +
+            '<td class="py-2 px-3 font-bold text-gray-900 max-w-[200px] truncate" title="' + escapeHtml(r.nama) + '">' + escapeHtml(r.nama) + '</td>' +
+            '<td class="py-2 px-2 text-center text-gray-600 text-[11px]">' + escapeHtml(r.satuan || 'Pcs') + '</td>' +
+            '<td class="py-2 px-3 text-gray-600 whitespace-nowrap text-[11px]">' + escapeHtml(r.lokasi || '-') + '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+
+      document.getElementById('riwayatTotalRows').innerText = rows.length;
+      document.getElementById('riwayatTotalMasuk').innerText = '+' + totalMasuk;
+      document.getElementById('riwayatTotalKeluar').innerText = '-' + totalKeluar;
+    }
+
+    // ================= KARTU STOK =================
+    function populateKartuItemSelect() {
+      var select = document.getElementById('kartuItemSelect');
+      var currentVal = select.value;
+      var html = '<option value="">-- Pilih Item Barang --</option>';
+
+      STATE.items.forEach(function(it) {
+        var id = it.id || it.nama;
+        var label = (it.kode ? '[' + it.kode + '] ' : '') + it.nama + ' (Stok: ' + it.stok + ' ' + (it.satuan || '') + ')';
+        html += '<option value="' + escapeHtml(id) + '">' + escapeHtml(label) + '</option>';
+      });
+
+      select.innerHTML = html;
+      if (STATE.selectedItemForKartu) {
+        select.value = STATE.selectedItemForKartu.id || STATE.selectedItemForKartu.nama;
+        loadKartuStok(select.value);
+      } else if (currentVal) {
+        select.value = currentVal;
+        loadKartuStok(currentVal);
+      } else if (STATE.items.length > 0) {
+        select.value = STATE.items[0].id || STATE.items[0].nama;
+        loadKartuStok(select.value);
+      }
+    }
+
+    function openKartuForItem(identifier) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (item) {
+        STATE.selectedItemForKartu = item;
+        switchTab('kartu');
+      }
+    }
+
+    function loadKartuStok(identifier) {
+      if (!identifier) return;
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+
+      STATE.selectedItemForKartu = item;
+      document.getElementById('kartuNama').innerText = item.nama;
+      document.getElementById('kartuMeta').innerText = 'Kode: ' + (item.kode || '-') + ' | Satuan: ' + (item.satuan || 'Pcs') + ' | Lokasi: ' + (item.lokasi || 'Gudang');
+      document.getElementById('kartuStokValue').innerText = item.stok || 0;
+
+      var ledger = [];
+      STATE.transactions.forEach(function(tx) {
+        (tx.items || []).forEach(function(it) {
+          if (it.nama === item.nama || it.itemId === item.id || (item.kode && it.kode === item.kode)) {
+            ledger.push({
+              tanggal: tx.tanggal,
+              noDokumen: tx.noDokumen,
+              keterangan: tx.keterangan || '-',
+              type: tx.type,
+              masuk: tx.type === 'IN' ? it.qty : 0,
+              keluar: tx.type === 'OUT' ? it.qty : 0,
+              stokSebelum: it.stokSebelum,
+              stokSesudah: it.stokSesudah
+            });
+          }
+        });
+      });
+
+      ledger.sort(function(a, b) {
+        return a.tanggal.localeCompare(b.tanggal);
+      });
+
+      var tbody = document.getElementById('tbody-kartu');
+      if (ledger.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400">Belum ada mutasi transaksi untuk item barang ini.</td></tr>';
+      } else {
+        var html = '';
+        ledger.forEach(function(entry, idx) {
+          var masukCell = entry.masuk > 0 ? '<span class="font-black text-emerald-700">+' + entry.masuk + '</span>' : '-';
+          var keluarCell = entry.keluar > 0 ? '<span class="font-black text-rose-700">-' + entry.keluar + '</span>' : '-';
+          html += '<tr class="hover:bg-gray-50">' +
+            '<td class="py-2 px-3 text-center text-gray-400 font-mono text-[11px]">' + (idx + 1) + '</td>' +
+            '<td class="py-2 px-3 font-mono font-medium whitespace-nowrap text-gray-700 text-[11px]">' + entry.tanggal + '</td>' +
+            '<td class="py-2 px-3 font-mono font-bold text-emerald-900 whitespace-nowrap text-[11px]">' + escapeHtml(entry.noDokumen) + '</td>' +
+            '<td class="py-2 px-4 text-gray-700 max-w-[200px] truncate text-[11px]">' + escapeHtml(entry.keterangan) + '</td>' +
+            '<td class="py-2 px-3 text-right bg-emerald-50/40 text-xs font-bold">' + masukCell + '</td>' +
+            '<td class="py-2 px-3 text-right bg-rose-50/40 text-xs font-bold">' + keluarCell + '</td>' +
+            '<td class="py-2 px-3 text-right text-gray-500 font-medium text-[11px]">' + entry.stokSebelum + '</td>' +
+            '<td class="py-2 px-3 text-right font-black text-emerald-900 text-xs">' + entry.stokSesudah + '</td>' +
+          '</tr>';
+        });
+        tbody.innerHTML = html;
+      }
+    }
+
+    // ================= TABLE INPUT MASUK & KELUAR =================
+    var rowCounter = { IN: 0, OUT: 0 };
+
+    function addTableRow(type) {
+      rowCounter[type]++;
+      var id = type.toLowerCase() + '_row_' + rowCounter[type];
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+
+      var tr = document.createElement('tr');
+      tr.id = id;
+      tr.className = 'hover:bg-gray-50/60 transition-colors border-b border-gray-100';
+
+      if (type === 'IN') {
+        tr.innerHTML = 
+          '<td class="py-2 px-2 text-center text-gray-400 font-mono text-[11px] row-num">1</td>' +
+          '<td class="py-1.5 px-3 relative">' +
+            '<input type="text" placeholder="Ketik nama / kode barang..." class="item-input w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white font-medium" oninput="handleItemAutocomplete(this, \'IN\')"/>' +
+            '<div class="autocomplete-items hidden"></div>' +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-center"><span class="item-satuan text-xs font-bold text-gray-600">-</span></td>' +
+          '<td class="py-1.5 px-2"><span class="item-lokasi text-xs text-gray-600 truncate block" title="-">-</span></td>' +
+          '<td class="py-1.5 px-2 text-right"><input type="number" min="1" placeholder="0" class="item-qty w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg text-right font-black text-emerald-800 focus:ring-2 focus:ring-emerald-500" oninput="updateTableSummary(\'IN\')"/></td>' +
+          '<td class="py-1.5 px-1 text-center"><button type="button" onclick="removeTableRow(\'' + id + '\', \'IN\')" class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded">&times;</button></td>';
+      } else {
+        tr.innerHTML = 
+          '<td class="py-2 px-2 text-center text-gray-400 font-mono text-[11px] row-num">1</td>' +
+          '<td class="py-1.5 px-3 relative">' +
+            '<input type="text" placeholder="Ketik nama / kode barang..." class="item-input w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 bg-white font-medium" oninput="handleItemAutocomplete(this, \'OUT\')"/>' +
+            '<div class="autocomplete-items hidden"></div>' +
+          '</td>' +
+          '<td class="py-1.5 px-2 text-center"><span class="item-satuan text-xs font-bold text-gray-600">-</span></td>' +
+          '<td class="py-1.5 px-2 text-right"><span class="item-stok-avail text-xs font-black text-emerald-800">-</span></td>' +
+          '<td class="py-1.5 px-2 text-right"><input type="number" min="1" placeholder="0" class="item-qty w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg text-right font-black text-rose-800 focus:ring-2 focus:ring-rose-500" oninput="validateAndCalculateOutRow(this)"/></td>' +
+          '<td class="py-1.5 px-1 text-center"><button type="button" onclick="removeTableRow(\'' + id + '\', \'OUT\')" class="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded">&times;</button></td>';
+      }
+
+      tbody.appendChild(tr);
+      reindexTableRows(type);
+      updateTableSummary(type);
+    }
+
+    function removeTableRow(rowId, type) {
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+      if (tbody.children.length <= 1) {
+        showToast('Minimal harus ada 1 baris transaksi.');
+        return;
+      }
+      var el = document.getElementById(rowId);
+      if (el) el.remove();
+      reindexTableRows(type);
+      updateTableSummary(type);
+    }
+
+    function reindexTableRows(type) {
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+      var rows = tbody.querySelectorAll('tr');
+      rows.forEach(function(r, idx) {
+        var num = r.querySelector('.row-num');
+        if (num) num.innerText = idx + 1;
+      });
+      document.getElementById('totalRows-' + type).innerText = rows.length;
+    }
+
+    function updateTableSummary(type) {
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+      var qtyInputs = tbody.querySelectorAll('.item-qty');
+      var total = 0;
+      qtyInputs.forEach(function(inp) {
+        var v = parseFloat(inp.value);
+        if (!isNaN(v) && v > 0) total += v;
+      });
+      document.getElementById('totalQty-' + type).innerText = total;
+    }
+
+    function validateAndCalculateOutRow(input) {
+      var tr = input.closest('tr');
+      var availEl = tr.querySelector('.item-stok-avail');
+      var availStok = parseFloat(availEl.dataset.stok);
+      var qty = parseFloat(input.value);
+
+      if (!isNaN(availStok) && !isNaN(qty)) {
+        if (qty > availStok) {
+          input.classList.add('border-rose-600', 'bg-rose-50');
+          showToast('Jumlah keluar (' + qty + ') melebihi stok yang ada (' + availStok + ')!');
+        } else {
+          input.classList.remove('border-rose-600', 'bg-rose-50');
+        }
+      }
+      updateTableSummary('OUT');
+    }
+
+    function handleItemAutocomplete(input, type) {
+      var val = input.value.toLowerCase().trim();
+      var container = input.nextElementSibling;
+      if (!val) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+
+      var matches = STATE.items.filter(function(i) {
+        return (i.nama || '').toLowerCase().indexOf(val) !== -1 || (i.kode || '').toLowerCase().indexOf(val) !== -1;
+      }).slice(0, 8);
+
+      if (matches.length === 0) {
+        container.innerHTML = '<div class="p-2 text-xs text-gray-400">Tidak ada barang ditemukan</div>';
+        container.classList.remove('hidden');
+        return;
+      }
+
+      var html = '';
+      matches.forEach(function(item) {
+        html += '<div class="autocomplete-item" onclick="selectTableRowItem(this, \'' + escapeJsArg(item.id || item.nama) + '\', \'' + escapeJsArg(type) + '\')">' +
+          '<div>' +
+            '<span class="font-mono font-bold text-emerald-800 mr-1.5">' + escapeHtml(item.kode || '-') + '</span>' +
+            '<span class="font-bold text-gray-900">' + escapeHtml(item.nama) + '</span>' +
+            '<div class="text-[10px] text-gray-500">Lokasi: ' + escapeHtml(item.lokasi || '-') + '</div>' +
+          '</div>' +
+          '<div class="text-right">' +
+            '<span class="font-black ' + (item.stok === 0 ? 'text-rose-600' : 'text-emerald-700') + '">Stok: ' + item.stok + '</span> ' +
+            '<span class="text-[10px] text-gray-500">' + escapeHtml(item.satuan || 'Pcs') + '</span>' +
+          '</div>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+      container.classList.remove('hidden');
+    }
+
+    function selectTableRowItem(el, identifier, type) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+
+      var tr = el.closest('tr');
+      var input = tr.querySelector('.item-input');
+      input.value = item.nama;
+      input.dataset.itemId = item.id;
+      input.dataset.itemKode = item.kode;
+      input.dataset.itemNama = item.nama;
+
+      var satuanEl = tr.querySelector('.item-satuan');
+      if (satuanEl) satuanEl.innerText = item.satuan || 'Pcs';
+
+      var lokasiEl = tr.querySelector('.item-lokasi');
+      if (lokasiEl) {
+        lokasiEl.innerText = item.lokasi || '-';
+        lokasiEl.title = item.lokasi || '-';
+      }
+
+      var availEl = tr.querySelector('.item-stok-avail');
+      if (availEl) {
+        availEl.innerText = item.stok || 0;
+        availEl.dataset.stok = item.stok || 0;
+      }
+
+      var container = input.nextElementSibling;
+      container.classList.add('hidden');
+      container.innerHTML = '';
+
+      var qtyInp = tr.querySelector('.item-qty');
+      if (qtyInp) qtyInp.focus();
+    }
+
+    function handleKeteranganChange(type) {
+      var sel = document.getElementById(type + '_keteranganSelect');
+      var customInp = document.getElementById(type + '_keteranganCustom');
+      if (sel.value === 'isi sendiri') {
+        customInp.classList.remove('hidden');
+        customInp.focus();
+      } else {
+        customInp.classList.add('hidden');
+      }
+    }
+
+    function createNewSheet(type) {
+      var nextDoc = generateNextDocNumber();
+      STATE.nextDocNumber = nextDoc;
+      updateDocNumbers();
+
+      var tglId = type === 'IN' ? 'masuk_tanggal' : 'keluar_tanggal';
+      document.getElementById(tglId).value = getTodayDate();
+
+      var ketSelId = type === 'IN' ? 'masuk_keteranganSelect' : 'keluar_keteranganSelect';
+      var ketCustomId = type === 'IN' ? 'masuk_keteranganCustom' : 'keluar_keteranganCustom';
+      document.getElementById(ketSelId).value = '';
+      document.getElementById(ketCustomId).value = '';
+      document.getElementById(ketCustomId).classList.add('hidden');
+
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+      tbody.innerHTML = '';
+      addTableRow(type);
+      showToast('Lembar input ' + (type === 'IN' ? 'Masuk' : 'Keluar') + ' baru berhasil dibuat.');
+    }
+
+    // ================= SUBMIT TRANSAKSI MASUK / KELUAR =================
+    function submitTransaction(type) {
+      var tgl = document.getElementById(type === 'IN' ? 'masuk_tanggal' : 'keluar_tanggal').value;
+      var noDoc = document.getElementById(type === 'IN' ? 'masuk_noDokumen' : 'keluar_noDokumen').value;
+      var ketSelect = document.getElementById(type === 'IN' ? 'masuk_keteranganSelect' : 'keluar_keteranganSelect').value;
+      var ketCustom = document.getElementById(type === 'IN' ? 'masuk_keteranganCustom' : 'keluar_keteranganCustom').value;
+
+      var keterangan = ketSelect === 'isi sendiri' ? ketCustom.trim() : ketSelect;
+      if (!keterangan) {
+        alert('Silakan pilih atau isi keterangan transaksi!');
+        return;
+      }
+
+      var tbody = document.getElementById('tbody-' + (type === 'IN' ? 'masuk' : 'keluar'));
+      var rows = tbody.querySelectorAll('tr');
+      var itemsToRecord = [];
+
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var itemInput = r.querySelector('.item-input');
+        var qtyInput = r.querySelector('.item-qty');
+
+        var itemName = (itemInput.dataset.itemNama || itemInput.value || '').trim();
+        var itemKode = itemInput.dataset.itemKode || '';
+        var qty = parseFloat(qtyInput.value);
+
+        if (!itemName) continue;
+        if (isNaN(qty) || qty <= 0) {
+          alert('Qty untuk barang "' + itemName + '" harus lebih besar dari 0!');
+          qtyInput.focus();
+          return;
+        }
+
+        var matchedItem = findItemByIdOrName(itemInput.dataset.itemId, itemName);
+        if (!matchedItem) {
+          alert('Barang "' + itemName + '" tidak ditemukan di katalog!');
+          return;
+        }
+
+        if (type === 'OUT' && qty > (matchedItem.stok || 0)) {
+          alert('Stok "' + matchedItem.nama + '" tidak mencukupi! Tersedia: ' + matchedItem.stok + ', Keluar: ' + qty);
+          return;
+        }
+
+        itemsToRecord.push({
+          itemId: matchedItem.id,
+          kode: matchedItem.kode,
+          nama: matchedItem.nama,
+          satuan: matchedItem.satuan,
+          lokasi: matchedItem.lokasi,
+          qty: qty,
+          stokSebelum: matchedItem.stok || 0,
+          stokSesudah: type === 'IN' ? (matchedItem.stok || 0) + qty : (matchedItem.stok || 0) - qty
+        });
+      }
+
+      if (itemsToRecord.length === 0) {
+        alert('Pilih minimal satu barang untuk disimpan!');
+        return;
+      }
+
+      // 1. Optimistic Local Update (Anti Delay)
+      itemsToRecord.forEach(function(entry) {
+        var target = findItemByIdOrName(entry.itemId, entry.nama);
+        if (target) {
+          target.stok = entry.stokSesudah;
+          target.status = target.stok === 0 ? 'HABIS' : (target.stok <= 5 ? 'MENIPIS' : 'AMAN');
+        }
+      });
+
+      var newTx = {
+        id: 'tx_' + Date.now(),
+        type: type,
+        tanggal: tgl,
+        noDokumen: noDoc,
+        keterangan: keterangan,
+        createdAt: new Date().toISOString(),
+        items: itemsToRecord
+      };
+
+      STATE.transactions.push(newTx);
+      STATE.nextDocNumber = generateNextDocNumber();
+      saveToLocalCache();
+      updateDocNumbers();
+      renderAllViews();
+
+      showToast('Transaksi ' + (type === 'IN' ? 'Barang Masuk' : 'Barang Keluar') + ' [' + noDoc + '] berhasil disimpan!');
+      createNewSheet(type);
+
+      // 2. Kirim ke Google Apps Script backend di latar belakang (Async)
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        document.getElementById('syncBadge').innerText = 'Saving...';
+        google.script.run
+          .withSuccessHandler(function(data) {
+            document.getElementById('syncBadge').innerText = 'Ready';
+            if (data && data.items) {
+              STATE.items = data.items;
+              STATE.transactions = data.transactions || [];
+              STATE.nextDocNumber = data.nextDocNumber || generateNextDocNumber();
+              saveToLocalCache();
+              updateDocNumbers();
+              renderAllViews();
+            }
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('syncBadge').innerText = 'Sync Error';
+            console.error(err);
+          })
+          .apiRecordTransaction({
+            type: type,
+            tanggal: tgl,
+            noDokumen: noDoc,
+            keterangan: keterangan,
+            items: itemsToRecord
+          });
+      }
+    }
+
+    // ================= SINKRONISASI SERVER =================
+    function syncDataFromServer() {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        showToast('Mode lokal: data tersimpan di browser.');
+        return;
+      }
+
+      var icon = document.getElementById('syncIcon');
+      icon.classList.add('animate-spin');
+      document.getElementById('syncBadge').innerText = 'Syncing...';
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          icon.classList.remove('animate-spin');
+          document.getElementById('syncBadge').innerText = 'Synced';
+          if (data && data.items) {
+            STATE.items = data.items;
+            STATE.transactions = data.transactions || [];
+            STATE.productions = data.productions || [];
+            STATE.nextDocNumber = data.nextDocNumber || generateNextDocNumber();
+            STATE.nextProdDocNumber = data.nextProdDocNumber || generateNextProdDocNumber();
+            saveToLocalCache();
+            updateDocNumbers();
+            renderAllViews();
+            showToast('Sinkronisasi Google Sheet berhasil!');
+          }
+        })
+        .withFailureHandler(function(err) {
+          icon.classList.remove('animate-spin');
+          document.getElementById('syncBadge').innerText = 'Error';
+          alert('Gagal sinkronisasi: ' + err.toString());
+        })
+        .apiGetInitialData();
+    }
+
+    // ================= DAFTAR DOCUMENT & EDIT TRANSAKSI =================
+    function getFilteredDocuments() {
+      var start = document.getElementById('dokStartDate') ? document.getElementById('dokStartDate').value : '';
+      var end = document.getElementById('dokEndDate') ? document.getElementById('dokEndDate').value : '';
+      var typeF = document.getElementById('dokTypeFilter') ? document.getElementById('dokTypeFilter').value : 'ALL';
+      var search = document.getElementById('dokSearchInput') ? document.getElementById('dokSearchInput').value.toLowerCase().trim() : '';
+
+      return STATE.transactions.filter(function(tx) {
+        if (start && tx.tanggal < start) return false;
+        if (end && tx.tanggal > end) return false;
+        if (typeF !== 'ALL' && tx.type !== typeF) return false;
+        if (search) {
+          var matchDoc = (tx.noDokumen || '').toLowerCase().indexOf(search) !== -1;
+          var matchKet = (tx.keterangan || '').toLowerCase().indexOf(search) !== -1;
+          var matchTgl = formatDateDDMMYYYY(tx.tanggal).toLowerCase().indexOf(search) !== -1;
+          var matchIt = (tx.items || []).some(function(it) {
+            return (it.nama || '').toLowerCase().indexOf(search) !== -1 || (it.kode || '').toLowerCase().indexOf(search) !== -1;
+          });
+          if (!matchDoc && !matchKet && !matchTgl && !matchIt) return false;
+        }
+        return true;
+      }).sort(function(a, b) {
+        if (a.tanggal !== b.tanggal) return (b.tanggal || '').localeCompare(a.tanggal || '');
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+      });
+    }
+
+    function renderDokumenTable() {
+      var tbody = document.getElementById('tbody-dokumen');
+      if (!tbody) return;
+      var docs = getFilteredDocuments();
+      var countEl = document.getElementById('dokTotalCount');
+      if (countEl) countEl.innerText = docs.length;
+
+      if (docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-10 text-center text-gray-400">Belum ada dokumen transaksi yang tercatat.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      docs.forEach(function(tx) {
+        var totalQty = (tx.items || []).reduce(function(s, it) { return s + (Number(it.qty) || 0); }, 0);
+        var typeBadge = tx.type === 'IN'
+          ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">Masuk</span>'
+          : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-100 text-rose-800">Keluar</span>';
+        var qtyBadge = tx.type === 'IN'
+          ? '<span class="inline-block px-2.5 py-0.5 rounded font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">+' + totalQty + '</span>'
+          : '<span class="inline-block px-2.5 py-0.5 rounded font-bold bg-rose-50 text-rose-700 border border-rose-200">-' + totalQty + '</span>';
+
+        html += '<tr onclick="openDocDetailModal(\'' + escapeJsArg(tx.id) + '\')" class="cursor-pointer hover:bg-emerald-50/40 transition-colors">' +
+          '<td class="py-3 px-4 font-mono text-gray-700 whitespace-nowrap">' + formatDateDDMMYYYY(tx.tanggal) + '</td>' +
+          '<td class="py-3 px-4 whitespace-nowrap"><div class="flex items-center gap-2"><span class="font-mono font-bold text-gray-900">' + escapeHtml(tx.noDokumen) + '</span>' + typeBadge + '</div></td>' +
+          '<td class="py-3 px-4 text-gray-700">' + escapeHtml(tx.keterangan || '-') + '</td>' +
+          '<td class="py-3 px-4 text-right whitespace-nowrap">' + qtyBadge + '</td>' +
+        '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function findTxById(txId) {
+      for (var i = 0; i < STATE.transactions.length; i++) {
+        if (STATE.transactions[i].id === txId) return STATE.transactions[i];
+      }
+      return null;
+    }
+
+    function openDocDetailModal(txId) {
+      var tx = findTxById(txId);
+      if (!tx) return;
+      STATE.selectedDocId = txId;
+      STATE.isEditingDoc = false;
+      renderDocModalContent();
+      document.getElementById('docDetailModal').classList.remove('hidden');
+    }
+
+    function closeDocDetailModal() {
+      STATE.selectedDocId = null;
+      STATE.isEditingDoc = false;
+      document.getElementById('docDetailModal').classList.add('hidden');
+    }
+
+    function renderDocModalContent() {
+      var tx = findTxById(STATE.selectedDocId);
+      if (!tx) return;
+
+      var badgeEl = document.getElementById('docModalBadge');
+      badgeEl.innerText = tx.type === 'IN' ? 'Hasil Input Masuk' : 'Hasil Input Keluar';
+      badgeEl.className = 'px-2 py-0.5 rounded text-[11px] font-extrabold uppercase text-white ' + (tx.type === 'IN' ? 'bg-emerald-600' : 'bg-rose-600');
+      document.getElementById('docModalTitle').innerText = tx.noDokumen;
+      document.getElementById('docModalDate').innerText = '(' + formatDateDDMMYYYY(tx.tanggal) + ')';
+
+      document.getElementById('btnDocStartEdit').classList.toggle('hidden', STATE.isEditingDoc);
+      document.getElementById('btnDocCancelEdit').classList.toggle('hidden', !STATE.isEditingDoc);
+      document.getElementById('btnDocSaveEdit').classList.toggle('hidden', !STATE.isEditingDoc);
+
+      var body = document.getElementById('docModalBody');
+      if (!STATE.isEditingDoc) {
+        var rowsHtml = '';
+        (tx.items || []).forEach(function(it, idx) {
+          rowsHtml += '<tr class="hover:bg-gray-50">' +
+            '<td class="py-2 px-3 text-center text-gray-400 font-mono">' + (idx + 1) + '</td>' +
+            '<td class="py-2 px-3 font-mono text-gray-700">' + escapeHtml(it.kode || '-') + '</td>' +
+            '<td class="py-2 px-3 font-semibold text-gray-900">' + escapeHtml(it.nama) + '</td>' +
+            '<td class="py-2 px-3 text-center text-gray-600">' + escapeHtml(it.satuan || 'Pcs') + '</td>' +
+            '<td class="py-2 px-3 text-gray-600">' + escapeHtml(it.lokasi || '-') + '</td>' +
+            '<td class="py-2 px-3 text-right font-bold ' + (tx.type === 'IN' ? 'text-emerald-700' : 'text-rose-700') + '">' + (tx.type === 'IN' ? '+' : '-') + it.qty + '</td>' +
+            '<td class="py-2 px-3 text-right font-mono text-gray-500">' + (it.stokSebelum || 0) + '</td>' +
+            '<td class="py-2 px-3 text-right font-mono font-bold text-gray-900">' + (it.stokSesudah || 0) + '</td>' +
+          '</tr>';
+        });
+        body.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">' +
+            '<div><span class="text-gray-500 block text-[11px]">Tanggal</span><strong class="font-mono text-gray-900">' + formatDateDDMMYYYY(tx.tanggal) + '</strong></div>' +
+            '<div><span class="text-gray-500 block text-[11px]">No Document</span><strong class="font-mono text-gray-900">' + escapeHtml(tx.noDokumen) + '</strong></div>' +
+            '<div><span class="text-gray-500 block text-[11px]">Keterangan</span><strong class="text-gray-900">' + escapeHtml(tx.keterangan || '-') + '</strong></div>' +
+          '</div>' +
+          '<div class="overflow-x-auto border border-gray-200 rounded-xl">' +
+            '<table class="w-full text-left text-xs">' +
+              '<thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200"><tr>' +
+                '<th class="py-2 px-3 w-10 text-center">No</th><th class="py-2 px-3">Kode</th><th class="py-2 px-3">Nama Barang</th><th class="py-2 px-3 text-center">Satuan</th><th class="py-2 px-3">Lokasi</th><th class="py-2 px-3 text-right">Qty</th><th class="py-2 px-3 text-right">Stok Sblm</th><th class="py-2 px-3 text-right">Stok Sesudah</th>' +
+              '</tr></thead>' +
+              '<tbody class="divide-y divide-gray-100 bg-white">' + rowsHtml + '</tbody>' +
+            '</table>' +
+          '</div>';
+      } else {
+        var presets = tx.type === 'IN' ? ['Repack KSB', 'Repack PKL', 'Repack Ulang'] : ['Untuk Toko', 'Repack Ulang', 'Kiriman Custumer'];
+        var isPreset = presets.indexOf(tx.keterangan) !== -1;
+        var optHtml = '<option value="">-- Pilih Keterangan --</option>';
+        presets.forEach(function(p) {
+          optHtml += '<option value="' + p + '"' + (tx.keterangan === p ? ' selected' : '') + '>' + p + '</option>';
+        });
+        optHtml += '<option value="isi sendiri"' + (!isPreset ? ' selected' : '') + '>isi sendiri</option>';
+        var customKet = isPreset ? '' : (tx.keterangan === '-' ? '' : tx.keterangan);
+
+        body.innerHTML =
+          '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">Tanggal</label><input type="date" id="editDocTanggal" value="' + escapeHtml(tx.tanggal) + '" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/></div>' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">No Document</label><input type="text" id="editDocNo" value="' + escapeHtml(tx.noDokumen) + '" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold"/></div>' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">Keterangan</label>' +
+              '<select id="editDocKetSelect" onchange="document.getElementById(\'editDocKetCustom\').classList.toggle(\'hidden\', this.value !== \'isi sendiri\')" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">' + optHtml + '</select>' +
+              '<input type="text" id="editDocKetCustom" value="' + escapeHtml(customKet) + '" placeholder="Ketik keterangan..." class="mt-1.5 w-full bg-white border border-emerald-300 rounded-lg px-2.5 py-1.5 text-xs ' + (isPreset ? 'hidden' : '') + '"/>' +
+            '</div>' +
+          '</div>' +
+          '<div class="overflow-x-auto border border-gray-200 rounded-xl">' +
+            '<table class="w-full text-left text-xs">' +
+              '<thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200"><tr>' +
+                '<th class="py-2 px-3 w-10 text-center">No</th><th class="py-2 px-3 min-w-[220px]">Nama Barang</th><th class="py-2 px-3 text-center">Satuan</th><th class="py-2 px-3">Lokasi</th><th class="py-2 px-3 text-right w-28">Qty</th><th class="py-2 px-3 text-center w-14">Hapus</th>' +
+              '</tr></thead>' +
+              '<tbody id="tbody-edit-doc" class="divide-y divide-gray-100 bg-white"></tbody>' +
+            '</table>' +
+          '</div>' +
+          '<div class="flex items-center justify-between">' +
+            '<button type="button" onclick="addEditDocRow()" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">+ Tambah Baris</button>' +
+          '</div>';
+
+        (tx.items || []).forEach(function(it) {
+          addEditDocRow(it);
+        });
+      }
+    }
+
+    function startEditDocumentModal() {
+      STATE.isEditingDoc = true;
+      renderDocModalContent();
+    }
+
+    function cancelEditDocumentModal() {
+      STATE.isEditingDoc = false;
+      renderDocModalContent();
+    }
+
+    var editDocRowCounter = 0;
+    function addEditDocRow(prefill) {
+      var tbody = document.getElementById('tbody-edit-doc');
+      if (!tbody) return;
+      editDocRowCounter++;
+      var rowId = 'edit_doc_row_' + editDocRowCounter;
+      var tr = document.createElement('tr');
+      tr.id = rowId;
+      var matched = prefill ? findItemByIdOrName(prefill.itemId, prefill.nama) : null;
+      var namaVal = prefill ? (prefill.nama || '') : '';
+      var kodeVal = matched ? matched.kode : (prefill ? prefill.kode : '');
+      var idVal = matched ? matched.id : (prefill ? prefill.itemId : '');
+      var satuanVal = matched ? matched.satuan : (prefill ? prefill.satuan : '-');
+      var lokasiVal = matched ? matched.lokasi : (prefill ? prefill.lokasi : '-');
+      var qtyVal = prefill ? prefill.qty : '';
+
+      tr.innerHTML =
+        '<td class="py-2 px-3 text-center text-gray-400 font-mono row-num">' + (tbody.children.length + 1) + '</td>' +
+        '<td class="py-2 px-3 relative">' +
+          '<input type="text" value="' + escapeHtml(namaVal) + '" data-item-id="' + escapeHtml(idVal) + '" data-item-kode="' + escapeHtml(kodeVal) + '" data-item-nama="' + escapeHtml(namaVal) + '" placeholder="Cari nama / kode barang..." class="item-input w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg" oninput="handleItemAutocomplete(this, \'EDITDOC\')"/>' +
+          '<div class="autocomplete-items hidden"></div>' +
+        '</td>' +
+        '<td class="py-2 px-3 text-center"><span class="item-satuan text-gray-600">' + escapeHtml(satuanVal || '-') + '</span></td>' +
+        '<td class="py-2 px-3"><span class="item-lokasi text-gray-600">' + escapeHtml(lokasiVal || '-') + '</span></td>' +
+        '<td class="py-2 px-3"><input type="number" min="0.01" step="any" value="' + escapeHtml(qtyVal) + '" class="item-qty w-full text-right bg-gray-50 border border-gray-300 rounded-lg px-2 py-1 text-xs font-bold"/></td>' +
+        '<td class="py-2 px-3 text-center"><button type="button" onclick="removeEditDocRow(\'' + rowId + '\')" class="p-1 text-rose-500 hover:bg-rose-50 rounded">&times;</button></td>';
+      tbody.appendChild(tr);
+    }
+
+    function removeEditDocRow(rowId) {
+      var tbody = document.getElementById('tbody-edit-doc');
+      if (!tbody || tbody.children.length <= 1) return;
+      var el = document.getElementById(rowId);
+      if (el) el.remove();
+      Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(r, i) {
+        var n = r.querySelector('.row-num');
+        if (n) n.innerText = i + 1;
+      });
+    }
+
+    function saveEditedDocument() {
+      var oldTx = findTxById(STATE.selectedDocId);
+      if (!oldTx) return;
+      var newTgl = document.getElementById('editDocTanggal').value;
+      var newNoDoc = document.getElementById('editDocNo').value.trim();
+      var ketSel = document.getElementById('editDocKetSelect').value;
+      var ketCust = document.getElementById('editDocKetCustom').value;
+      var newKet = (ketSel === 'isi sendiri' ? ketCust.trim() : ketSel) || '-';
+      if (!newNoDoc) { alert('No Document wajib diisi.'); return; }
+
+      var rows = document.getElementById('tbody-edit-doc').querySelectorAll('tr');
+      var rawEntries = [];
+      for (var i = 0; i < rows.length; i++) {
+        var inp = rows[i].querySelector('.item-input');
+        var qInp = rows[i].querySelector('.item-qty');
+        var nm = (inp.dataset.itemNama || inp.value || '').trim();
+        var qty = parseFloat(qInp.value);
+        if (!nm) { alert('Baris #' + (i + 1) + ': Pilih barang terlebih dahulu.'); return; }
+        var matched = findItemByIdOrName(inp.dataset.itemId, nm);
+        if (!matched) { alert('Barang "' + nm + '" tidak ditemukan.'); return; }
+        if (isNaN(qty) || qty <= 0) { alert('Qty untuk "' + matched.nama + '" harus > 0.'); return; }
+        rawEntries.push({ item: matched, qty: qty });
+      }
+
+      // Simulasi stok baseline (kembalikan efek transaksi lama lalu terapkan yang baru)
+      var stockMap = {};
+      STATE.items.forEach(function(it) { stockMap[it.id || it.nama] = Number(it.stok) || 0; });
+      (oldTx.items || []).forEach(function(entry) {
+        var t = findItemByIdOrName(entry.itemId, entry.nama);
+        if (t) {
+          var k = t.id || t.nama;
+          stockMap[k] = oldTx.type === 'IN' ? (stockMap[k] - entry.qty) : (stockMap[k] + entry.qty);
+        }
+      });
+
+      var updatedItems = [];
+      for (var j = 0; j < rawEntries.length; j++) {
+        var m = rawEntries[j].item;
+        var key = m.id || m.nama;
+        var before = stockMap[key];
+        var after = oldTx.type === 'IN' ? (before + rawEntries[j].qty) : (before - rawEntries[j].qty);
+        if (after < 0) {
+          alert('Stok "' + m.nama + '" tidak mencukupi! Tersedia: ' + before + ', Keluar: ' + rawEntries[j].qty);
+          return;
+        }
+        stockMap[key] = after;
+        updatedItems.push({
+          itemId: m.id,
+          kode: m.kode,
+          nama: m.nama,
+          satuan: m.satuan,
+          lokasi: m.lokasi,
+          qty: rawEntries[j].qty,
+          stokSebelum: before,
+          stokSesudah: after
+        });
+      }
+
+      for (var sKey in stockMap) {
+        if (stockMap[sKey] < 0) {
+          alert('Perubahan menyebabkan stok barang menjadi negatif.');
+          return;
+        }
+      }
+
+      // Terapkan ke STATE lokal (anti-delay)
+      var oldNoDoc = oldTx.noDokumen;
+      var oldType = oldTx.type;
+      STATE.items.forEach(function(it) {
+        var val = stockMap[it.id || it.nama];
+        it.stok = val;
+        it.status = val === 0 ? 'HABIS' : (val <= 5 ? 'MENIPIS' : 'AMAN');
+      });
+      oldTx.tanggal = newTgl;
+      oldTx.noDokumen = newNoDoc;
+      oldTx.keterangan = newKet;
+      oldTx.items = updatedItems;
+
+      STATE.isEditingDoc = false;
+      saveToLocalCache();
+      renderAllViews();
+      renderDocModalContent();
+      showToast('Dokumen ' + newNoDoc + ' berhasil diperbarui!');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        document.getElementById('syncBadge').innerText = 'Saving...';
+        google.script.run
+          .withSuccessHandler(function(data) {
+            document.getElementById('syncBadge').innerText = 'Ready';
+            if (data && data.items) {
+              STATE.items = data.items;
+              STATE.transactions = data.transactions || [];
+              STATE.productions = data.productions || [];
+              STATE.nextDocNumber = data.nextDocNumber || generateNextDocNumber();
+              saveToLocalCache();
+              renderAllViews();
+            }
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('syncBadge').innerText = 'Sync Error';
+            alert('Gagal update sheet: ' + err.toString());
+          })
+          .apiUpdateTransaction({
+            oldNoDokumen: oldNoDoc,
+            oldType: oldType,
+            type: oldTx.type,
+            tanggal: newTgl,
+            noDokumen: newNoDoc,
+            keterangan: newKet,
+            items: updatedItems
+          });
+      }
+    }
+
+    // ================= MENU PRODUKSI (KEMAS ULANG) =================
+    var prodFormRowCounter = 0;
+
+    function addProdRow(tbodyIdOverride, prefill, baselineMap) {
+      var tbody = document.getElementById(tbodyIdOverride || 'tbody-produksi');
+      if (!tbody) return;
+      prodFormRowCounter++;
+      var rowId = 'prod_row_' + prodFormRowCounter;
+      var tr = document.createElement('tr');
+      tr.id = rowId;
+      tr.className = 'hover:bg-slate-50 transition-colors';
+
+      var matched = prefill ? findItemByIdOrName(prefill.itemId, prefill.nama) : null;
+      var idVal = matched ? matched.id : (prefill ? prefill.itemId : '');
+      var kodeVal = matched ? matched.kode : (prefill ? prefill.kode : '');
+      var namaVal = matched ? matched.nama : (prefill ? prefill.nama : '');
+      var stokBase = matched ? (baselineMap ? baselineMap[matched.id || matched.nama] : (matched.stok || 0)) : 0;
+      var satuanVal = matched ? (matched.satuan || 'Pcs') : (prefill ? prefill.satuan : '');
+      var keluarVal = prefill && prefill.keluar > 0 ? prefill.keluar : '';
+      var masukVal = prefill && prefill.masuk > 0 ? prefill.masuk : '';
+
+      tr.innerHTML =
+        '<td class="py-2 px-2.5 text-center text-gray-500 font-mono font-bold row-num">' + (tbody.children.length + 1) + '</td>' +
+        '<td class="py-2 px-3 relative">' +
+          '<input type="text" value="' + escapeHtml(kodeVal) + '" placeholder="Ketik kode..." class="prod-kode w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg font-mono" oninput="handleProdItemAutocomplete(this, \'kode\')"/>' +
+          '<div class="autocomplete-items hidden"></div>' +
+        '</td>' +
+        '<td class="py-2 px-3 relative">' +
+          '<input type="text" value="' + escapeHtml(namaVal) + '" data-item-id="' + escapeHtml(idVal) + '" data-item-kode="' + escapeHtml(kodeVal) + '" data-item-nama="' + escapeHtml(namaVal) + '" data-item-satuan="' + escapeHtml(satuanVal) + '" data-stok="' + stokBase + '" placeholder="Cari nama barang..." class="prod-nama w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg font-medium" oninput="handleProdItemAutocomplete(this, \'nama\')"/>' +
+          '<div class="autocomplete-items hidden"></div>' +
+        '</td>' +
+        '<td class="py-2 px-3 text-right whitespace-nowrap"><div class="prod-stok-cell font-mono text-xs">' + (matched ? '<span class="px-2 py-0.5 bg-slate-100 rounded font-bold">' + stokBase + ' ' + escapeHtml(satuanVal) + '</span>' : '<span class="text-gray-400">-</span>') + '</div></td>' +
+        '<td class="py-2 px-3 bg-rose-50/30"><input type="number" min="0" step="any" value="' + escapeHtml(keluarVal) + '" placeholder="0" class="prod-keluar w-full bg-rose-50 border border-rose-300 rounded px-2 py-1.5 text-xs font-bold text-right text-rose-900" oninput="recalcProdRow(this)"/></td>' +
+        '<td class="py-2 px-3 bg-emerald-50/30"><input type="number" min="0" step="any" value="' + escapeHtml(masukVal) + '" placeholder="0" class="prod-masuk w-full bg-emerald-50 border border-emerald-300 rounded px-2 py-1.5 text-xs font-bold text-right text-emerald-900" oninput="recalcProdRow(this)"/></td>' +
+        '<td class="py-2 px-2 text-center"><button type="button" onclick="removeProdRow(\'' + rowId + '\')" class="p-1 text-gray-400 hover:text-rose-600 rounded">&times;</button></td>';
+
+      tbody.appendChild(tr);
+      if (!tbodyIdOverride) updateProdFormSummary();
+    }
+
+    function removeProdRow(rowId) {
+      var el = document.getElementById(rowId);
+      if (!el) return;
+      var tbody = el.parentElement;
+      if (tbody.children.length <= 1) {
+        showToast('Minimal harus ada 1 baris barang produksi.');
+        return;
+      }
+      el.remove();
+      Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(r, i) {
+        var n = r.querySelector('.row-num');
+        if (n) n.innerText = i + 1;
+      });
+      if (tbody.id === 'tbody-produksi') updateProdFormSummary();
+    }
+
+    function handleProdItemAutocomplete(input, field) {
+      var val = input.value.toLowerCase().trim();
+      var container = input.nextElementSibling;
+      if (!val) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+      var matches = STATE.items.filter(function(i) {
+        return field === 'kode'
+          ? (i.kode || '').toLowerCase().indexOf(val) !== -1 || (i.nama || '').toLowerCase().indexOf(val) !== -1
+          : (i.nama || '').toLowerCase().indexOf(val) !== -1 || (i.kode || '').toLowerCase().indexOf(val) !== -1;
+      }).slice(0, 8);
+
+      if (matches.length === 0) {
+        container.innerHTML = '<div class="p-2 text-xs text-gray-400">Tidak ada barang ditemukan</div>';
+        container.classList.remove('hidden');
+        return;
+      }
+      var html = '';
+      matches.forEach(function(item) {
+        html += '<div class="autocomplete-item" onclick="selectProdRowItem(this, \'' + escapeJsArg(item.id || item.nama) + '\')">' +
+          '<div><span class="font-mono font-bold text-emerald-800 mr-1.5">' + escapeHtml(item.kode || '-') + '</span><span class="font-bold text-gray-900">' + escapeHtml(item.nama) + '</span><div class="text-[10px] text-gray-500">' + escapeHtml(item.lokasi || '-') + '</div></div>' +
+          '<div class="text-right"><span class="font-black ' + (item.stok === 0 ? 'text-rose-600' : 'text-emerald-700') + '">Stok: ' + item.stok + '</span> <span class="text-[10px] text-gray-500">' + escapeHtml(item.satuan || 'Pcs') + '</span></div>' +
+        '</div>';
+      });
+      container.innerHTML = html;
+      container.classList.remove('hidden');
+    }
+
+    function selectProdRowItem(el, identifier) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+      var tr = el.closest('tr');
+      var kodeInp = tr.querySelector('.prod-kode');
+      var namaInp = tr.querySelector('.prod-nama');
+      kodeInp.value = item.kode || '';
+      namaInp.value = item.nama;
+      namaInp.dataset.itemId = item.id;
+      namaInp.dataset.itemKode = item.kode || '';
+      namaInp.dataset.itemNama = item.nama;
+      namaInp.dataset.itemSatuan = item.satuan || 'Pcs';
+      namaInp.dataset.stok = item.stok || 0;
+
+      tr.querySelectorAll('.autocomplete-items').forEach(function(c) {
+        c.classList.add('hidden');
+        c.innerHTML = '';
+      });
+      recalcProdRow(tr.querySelector('.prod-keluar'));
+      tr.querySelector('.prod-keluar').focus();
+    }
+
+    function recalcProdRow(inp) {
+      var tr = inp.closest('tr');
+      var namaInp = tr.querySelector('.prod-nama');
+      var stokCell = tr.querySelector('.prod-stok-cell');
+      var base = parseFloat(namaInp.dataset.stok) || 0;
+      var sat = namaInp.dataset.itemSatuan || '';
+      var kel = parseFloat(tr.querySelector('.prod-keluar').value) || 0;
+      var mas = parseFloat(tr.querySelector('.prod-masuk').value) || 0;
+
+      if (namaInp.dataset.itemNama) {
+        var akhir = base - kel + mas;
+        var isOver = base - kel < 0;
+        var html = '<span class="px-2 py-0.5 bg-slate-100 rounded font-bold">' + base + ' ' + escapeHtml(sat) + '</span>';
+        if (kel > 0 || mas > 0) {
+          html += '<div class="text-[10px] font-bold mt-0.5 ' + (isOver ? 'text-rose-600' : 'text-emerald-700') + '">Akhir: ' + akhir + '</div>';
+        }
+        stokCell.innerHTML = html;
+      }
+      if (tr.parentElement && tr.parentElement.id === 'tbody-produksi') {
+        updateProdFormSummary();
+      }
+    }
+
+    function updateProdFormSummary() {
+      var tbody = document.getElementById('tbody-produksi');
+      if (!tbody) return;
+      var kel = 0, mas = 0;
+      tbody.querySelectorAll('tr').forEach(function(r) {
+        kel += parseFloat(r.querySelector('.prod-keluar').value) || 0;
+        mas += parseFloat(r.querySelector('.prod-masuk').value) || 0;
+      });
+      document.getElementById('prodTotalKeluar').innerText = '-' + kel;
+      document.getElementById('prodTotalMasuk').innerText = '+' + mas;
+    }
+
+    function createNewProdSheet() {
+      STATE.nextProdDocNumber = generateNextProdDocNumber();
+      document.getElementById('prod_tanggal').value = getTodayDate();
+      document.getElementById('prod_noDokumen').value = STATE.nextProdDocNumber;
+      document.getElementById('prod_keterangan').value = '';
+      var tbody = document.getElementById('tbody-produksi');
+      tbody.innerHTML = '';
+      addProdRow();
+      addProdRow();
+      updateProdFormSummary();
+      showToast('Lembar produksi baru disiapkan.');
+    }
+
+    function submitProduction() {
+      var tgl = document.getElementById('prod_tanggal').value;
+      var noDoc = document.getElementById('prod_noDokumen').value.trim();
+      var ketRaw = document.getElementById('prod_keterangan').value.trim();
+      var ket = ketRaw || '-';
+      if (!noDoc) { alert('No Document Produksi wajib diisi.'); return; }
+
+      var rows = document.getElementById('tbody-produksi').querySelectorAll('tr');
+      var rawItems = [];
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var namaInp = r.querySelector('.prod-nama');
+        var kodeVal = r.querySelector('.prod-kode').value.trim();
+        var namaVal = (namaInp.dataset.itemNama || namaInp.value || '').trim();
+        var kel = parseFloat(r.querySelector('.prod-keluar').value) || 0;
+        var mas = parseFloat(r.querySelector('.prod-masuk').value) || 0;
+        if (!namaVal && !kodeVal && kel === 0 && mas === 0) continue;
+        var matched = findItemByIdOrName(namaInp.dataset.itemId, namaVal);
+        if (!matched) { alert('Baris #' + (i + 1) + ': Barang tidak ditemukan di katalog.'); return; }
+        if (kel === 0 && mas === 0) { alert('Isi nilai Keluar atau Masuk > 0 untuk "' + matched.nama + '".'); return; }
+        rawItems.push({ item: matched, keluar: kel, masuk: mas });
+      }
+      if (rawItems.length === 0) { alert('Silakan isi minimal 1 baris barang produksi.'); return; }
+
+      var stockMap = {};
+      STATE.items.forEach(function(it) { stockMap[it.id || it.nama] = Number(it.stok) || 0; });
+      var prodItems = [];
+      var outItems = [];
+      var inItems = [];
+
+      for (var j = 0; j < rawItems.length; j++) {
+        var entry = rawItems[j];
+        var key = entry.item.id || entry.item.nama;
+        var before = stockMap[key];
+        var afterOut = before - entry.keluar;
+        if (afterOut < 0) {
+          alert('Stok "' + entry.item.nama + '" tidak mencukupi untuk keluar! Tersedia: ' + before + ', Keluar: ' + entry.keluar);
+          return;
+        }
+        var after = afterOut + entry.masuk;
+        stockMap[key] = after;
+
+        prodItems.push({
+          itemId: entry.item.id,
+          kode: entry.item.kode,
+          nama: entry.item.nama,
+          satuan: entry.item.satuan,
+          lokasi: entry.item.lokasi,
+          stokSebelum: before,
+          keluar: entry.keluar,
+          masuk: entry.masuk,
+          stokSesudah: after
+        });
+        if (entry.keluar > 0) {
+          outItems.push({
+            itemId: entry.item.id, kode: entry.item.kode, nama: entry.item.nama, satuan: entry.item.satuan, lokasi: entry.item.lokasi,
+            qty: entry.keluar, stokSebelum: before, stokSesudah: afterOut
+          });
+        }
+        if (entry.masuk > 0) {
+          inItems.push({
+            itemId: entry.item.id, kode: entry.item.kode, nama: entry.item.nama, satuan: entry.item.satuan, lokasi: entry.item.lokasi,
+            qty: entry.masuk, stokSebelum: afterOut, stokSesudah: after
+          });
+        }
+      }
+
+      var prodId = 'prod_' + Date.now();
+      STATE.items.forEach(function(it) {
+        var v = stockMap[it.id || it.nama];
+        it.stok = v;
+        it.status = v === 0 ? 'HABIS' : (v <= 5 ? 'MENIPIS' : 'AMAN');
+      });
+      STATE.productions.push({
+        id: prodId, noDokumen: noDoc, tanggal: tgl, keterangan: ket, createdAt: new Date().toISOString(), items: prodItems
+      });
+      if (outItems.length > 0) {
+        STATE.transactions.push({
+          id: 'tx_' + noDoc + '__OUT', type: 'OUT', tanggal: tgl, noDokumen: noDoc,
+          keterangan: ketRaw ? ('Produksi (Keluar): ' + ketRaw) : 'Produksi (Keluar Bahan)',
+          createdAt: new Date().toISOString(), items: outItems
+        });
+      }
+      if (inItems.length > 0) {
+        STATE.transactions.push({
+          id: 'tx_' + noDoc + '__IN', type: 'IN', tanggal: tgl, noDokumen: noDoc,
+          keterangan: ketRaw ? ('Produksi (Masuk): ' + ketRaw) : 'Produksi (Hasil Jadi)',
+          createdAt: new Date().toISOString(), items: inItems
+        });
+      }
+
+      STATE.nextProdDocNumber = generateNextProdDocNumber();
+      saveToLocalCache();
+      renderAllViews();
+      createNewProdSheet();
+      showToast('Produksi [' + noDoc + '] berhasil disimpan!');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        document.getElementById('syncBadge').innerText = 'Saving...';
+        google.script.run
+          .withSuccessHandler(function(data) {
+            document.getElementById('syncBadge').innerText = 'Ready';
+            if (data && data.items) {
+              STATE.items = data.items;
+              STATE.transactions = data.transactions || [];
+              STATE.productions = data.productions || [];
+              STATE.nextDocNumber = data.nextDocNumber || generateNextDocNumber();
+              STATE.nextProdDocNumber = data.nextProdDocNumber || generateNextProdDocNumber();
+              saveToLocalCache();
+              updateDocNumbers();
+              renderAllViews();
+            }
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('syncBadge').innerText = 'Sync Error';
+            alert('Gagal simpan produksi ke sheet: ' + err.toString());
+          })
+          .apiRecordProduction({
+            prodId: prodId, tanggal: tgl, noDokumen: noDoc, keterangan: ketRaw, items: prodItems
+          });
+      }
+    }
+
+    function getFilteredProductions() {
+      var start = document.getElementById('prodStartDate') ? document.getElementById('prodStartDate').value : '';
+      var end = document.getElementById('prodEndDate') ? document.getElementById('prodEndDate').value : '';
+      var mutasi = document.getElementById('prodMutasiFilter') ? document.getElementById('prodMutasiFilter').value : 'ALL';
+      var loc = document.getElementById('prodLocationFilter') ? document.getElementById('prodLocationFilter').value : 'ALL';
+      var q = document.getElementById('prodSearchInput') ? document.getElementById('prodSearchInput').value.toLowerCase().trim() : '';
+
+      return STATE.productions.filter(function(p) {
+        if (start && p.tanggal < start) return false;
+        if (end && p.tanggal > end) return false;
+        if (mutasi === 'KELUAR' && !(p.items || []).some(function(it) { return it.keluar > 0; })) return false;
+        if (mutasi === 'MASUK' && !(p.items || []).some(function(it) { return it.masuk > 0; })) return false;
+        if (loc !== 'ALL' && !(p.items || []).some(function(it) { return it.lokasi === loc; })) return false;
+        if (q) {
+          var mDoc = (p.noDokumen || '').toLowerCase().indexOf(q) !== -1;
+          var mKet = (p.keterangan || '').toLowerCase().indexOf(q) !== -1;
+          var mTgl = formatDateDDMMYYYY(p.tanggal).toLowerCase().indexOf(q) !== -1;
+          var mIt = (p.items || []).some(function(it) {
+            return (it.kode || '').toLowerCase().indexOf(q) !== -1 || (it.nama || '').toLowerCase().indexOf(q) !== -1;
+          });
+          if (!mDoc && !mKet && !mTgl && !mIt) return false;
+        }
+        return true;
+      }).sort(function(a, b) {
+        if (a.tanggal !== b.tanggal) return (b.tanggal || '').localeCompare(a.tanggal || '');
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+      });
+    }
+
+    function renderProduksiHistory() {
+      var tbody = document.getElementById('tbody-prod-docs');
+      if (!tbody) return;
+      var list = getFilteredProductions();
+      var cntEl = document.getElementById('prodDocCount');
+      if (cntEl) cntEl.innerText = list.length;
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="py-10 text-center text-gray-400">Belum ada dokumen produksi tersimpan.</td></tr>';
+        return;
+      }
+      var html = '';
+      list.forEach(function(p) {
+        html += '<tr onclick="openProdDetailModal(\'' + escapeJsArg(p.id) + '\')" class="cursor-pointer hover:bg-emerald-50/40 transition-colors">' +
+          '<td class="py-3 px-4 font-mono text-gray-700 whitespace-nowrap">' + formatDateDDMMYYYY(p.tanggal) + '</td>' +
+          '<td class="py-3 px-4 font-mono font-bold text-emerald-900 whitespace-nowrap">' + escapeHtml(p.noDokumen) + '</td>' +
+          '<td class="py-3 px-4 text-gray-700">' + escapeHtml(p.keterangan || '-') + '</td>' +
+        '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function findProdById(prodId) {
+      for (var i = 0; i < STATE.productions.length; i++) {
+        if (STATE.productions[i].id === prodId) return STATE.productions[i];
+      }
+      return null;
+    }
+
+    function openProdDetailModal(prodId) {
+      var prod = findProdById(prodId);
+      if (!prod) return;
+      STATE.selectedProdId = prodId;
+      STATE.isEditingProdModal = false;
+      renderProdModalContent();
+      document.getElementById('prodDetailModal').classList.remove('hidden');
+    }
+
+    function closeProdDetailModal() {
+      STATE.selectedProdId = null;
+      STATE.isEditingProdModal = false;
+      document.getElementById('prodDetailModal').classList.add('hidden');
+    }
+
+    function renderProdModalContent() {
+      var prod = findProdById(STATE.selectedProdId);
+      if (!prod) return;
+      document.getElementById('prodModalTitle').innerText = prod.noDokumen;
+      document.getElementById('prodModalDate').innerText = '(' + formatDateDDMMYYYY(prod.tanggal) + ')';
+      document.getElementById('btnProdStartEdit').classList.toggle('hidden', STATE.isEditingProdModal);
+      document.getElementById('btnProdCancelEdit').classList.toggle('hidden', !STATE.isEditingProdModal);
+      document.getElementById('btnProdSaveEdit').classList.toggle('hidden', !STATE.isEditingProdModal);
+
+      var body = document.getElementById('prodModalBody');
+      if (!STATE.isEditingProdModal) {
+        var rowsHtml = '';
+        (prod.items || []).forEach(function(it, idx) {
+          rowsHtml += '<tr class="hover:bg-gray-50">' +
+            '<td class="py-2 px-3 text-center text-gray-400 font-mono">' + (idx + 1) + '</td>' +
+            '<td class="py-2 px-3 font-mono text-gray-700">' + escapeHtml(it.kode || '-') + '</td>' +
+            '<td class="py-2 px-3 font-semibold text-gray-900">' + escapeHtml(it.nama) + '</td>' +
+            '<td class="py-2 px-3 text-center text-gray-600">' + escapeHtml(it.satuan || 'Pcs') + '</td>' +
+            '<td class="py-2 px-3 text-gray-600">' + escapeHtml(it.lokasi || '-') + '</td>' +
+            '<td class="py-2 px-3 text-right font-mono text-gray-600">' + (it.stokSebelum || 0) + '</td>' +
+            '<td class="py-2 px-3 text-right font-bold text-rose-700">' + (it.keluar > 0 ? '-' + it.keluar : '-') + '</td>' +
+            '<td class="py-2 px-3 text-right font-bold text-emerald-700">' + (it.masuk > 0 ? '+' + it.masuk : '-') + '</td>' +
+            '<td class="py-2 px-3 text-right font-mono font-bold text-gray-900">' + (it.stokSesudah || 0) + '</td>' +
+          '</tr>';
+        });
+        body.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">' +
+            '<div><span class="text-gray-500 block text-[11px]">Tanggal</span><strong class="font-mono text-gray-900">' + formatDateDDMMYYYY(prod.tanggal) + '</strong></div>' +
+            '<div><span class="text-gray-500 block text-[11px]">No Document</span><strong class="font-mono text-gray-900">' + escapeHtml(prod.noDokumen) + '</strong></div>' +
+            '<div><span class="text-gray-500 block text-[11px]">Keterangan</span><strong class="text-gray-900">' + escapeHtml(prod.keterangan || '-') + '</strong></div>' +
+          '</div>' +
+          '<div class="overflow-x-auto border border-gray-200 rounded-xl">' +
+            '<table class="w-full text-left text-xs">' +
+              '<thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200"><tr>' +
+                '<th class="py-2 px-3 w-10 text-center">No</th><th class="py-2 px-3">Kode</th><th class="py-2 px-3">Nama Barang</th><th class="py-2 px-3 text-center">Satuan</th><th class="py-2 px-3">Lokasi</th><th class="py-2 px-3 text-right">Stok Terkini</th><th class="py-2 px-3 text-right text-rose-800">Keluar</th><th class="py-2 px-3 text-right text-emerald-800">Masuk</th><th class="py-2 px-3 text-right">Stok Akhir</th>' +
+              '</tr></thead>' +
+              '<tbody class="divide-y divide-gray-100 bg-white">' + rowsHtml + '</tbody>' +
+            '</table>' +
+          '</div>';
+      } else {
+        var baselineMap = {};
+        STATE.items.forEach(function(it) { baselineMap[it.id || it.nama] = Number(it.stok) || 0; });
+        (prod.items || []).forEach(function(entry) {
+          var t = findItemByIdOrName(entry.itemId, entry.nama);
+          if (t) {
+            var k = t.id || t.nama;
+            baselineMap[k] = baselineMap[k] - ((Number(entry.masuk) || 0) - (Number(entry.keluar) || 0));
+          }
+        });
+
+        body.innerHTML =
+          '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">Tanggal</label><input type="date" id="editProdTanggal" value="' + escapeHtml(prod.tanggal) + '" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/></div>' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">No Document</label><input type="text" id="editProdNo" value="' + escapeHtml(prod.noDokumen) + '" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold"/></div>' +
+            '<div><label class="block text-[11px] font-bold text-gray-700 mb-1">Keterangan</label><input type="text" id="editProdKet" value="' + escapeHtml(prod.keterangan === '-' ? '' : prod.keterangan) + '" class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs"/></div>' +
+          '</div>' +
+          '<div class="overflow-x-auto border border-gray-200 rounded-xl">' +
+            '<table class="w-full text-left text-xs">' +
+              '<thead class="bg-gray-100 text-gray-700 font-bold border-b border-gray-200"><tr>' +
+                '<th class="py-2 px-2.5 w-10 text-center">No</th><th class="py-2 px-3 w-28">Kode</th><th class="py-2 px-3 min-w-[200px]">Nama Barang</th><th class="py-2 px-3 text-right">Stok Terkini</th><th class="py-2 px-3 text-right w-24 text-rose-800">Keluar</th><th class="py-2 px-3 text-right w-24 text-emerald-800">Masuk</th><th class="py-2 px-2 text-center w-12">Aksi</th>' +
+              '</tr></thead>' +
+              '<tbody id="tbody-edit-prod-modal" class="divide-y divide-gray-100 bg-white"></tbody>' +
+            '</table>' +
+          '</div>' +
+          '<div><button type="button" onclick="addProdRow(\'tbody-edit-prod-modal\')" class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold">+ Tambah Baris</button></div>';
+
+        (prod.items || []).forEach(function(it) {
+          addProdRow('tbody-edit-prod-modal', it, baselineMap);
+        });
+      }
+    }
+
+    function startEditProductionModal() {
+      STATE.isEditingProdModal = true;
+      renderProdModalContent();
+    }
+
+    function cancelEditProductionModal() {
+      STATE.isEditingProdModal = false;
+      renderProdModalContent();
+    }
+
+    function saveEditedProductionModal() {
+      var oldProd = findProdById(STATE.selectedProdId);
+      if (!oldProd) return;
+      var newTgl = document.getElementById('editProdTanggal').value;
+      var newNoDoc = document.getElementById('editProdNo').value.trim();
+      var newKetRaw = document.getElementById('editProdKet').value.trim();
+      var newKet = newKetRaw || '-';
+      if (!newNoDoc) { alert('No Document wajib diisi.'); return; }
+
+      var rows = document.getElementById('tbody-edit-prod-modal').querySelectorAll('tr');
+      var rawItems = [];
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var namaInp = r.querySelector('.prod-nama');
+        var kodeVal = r.querySelector('.prod-kode').value.trim();
+        var namaVal = (namaInp.dataset.itemNama || namaInp.value || '').trim();
+        var kel = parseFloat(r.querySelector('.prod-keluar').value) || 0;
+        var mas = parseFloat(r.querySelector('.prod-masuk').value) || 0;
+        if (!namaVal && !kodeVal && kel === 0 && mas === 0) continue;
+        var matched = findItemByIdOrName(namaInp.dataset.itemId, namaVal);
+        if (!matched) { alert('Baris #' + (i + 1) + ': Barang tidak ditemukan di katalog.'); return; }
+        if (kel === 0 && mas === 0) { alert('Isi nilai Keluar atau Masuk > 0 untuk "' + matched.nama + '".'); return; }
+        rawItems.push({ item: matched, keluar: kel, masuk: mas });
+      }
+      if (rawItems.length === 0) { alert('Minimal harus ada 1 barang produksi.'); return; }
+
+      var stockMap = {};
+      STATE.items.forEach(function(it) { stockMap[it.id || it.nama] = Number(it.stok) || 0; });
+      (oldProd.items || []).forEach(function(entry) {
+        var t = findItemByIdOrName(entry.itemId, entry.nama);
+        if (t) {
+          var k = t.id || t.nama;
+          stockMap[k] = stockMap[k] - ((Number(entry.masuk) || 0) - (Number(entry.keluar) || 0));
+        }
+      });
+
+      var newProdItems = [];
+      var outItems = [];
+      var inItems = [];
+      for (var j = 0; j < rawItems.length; j++) {
+        var entry = rawItems[j];
+        var key = entry.item.id || entry.item.nama;
+        var before = stockMap[key];
+        var afterOut = before - entry.keluar;
+        if (afterOut < 0) {
+          alert('Stok "' + entry.item.nama + '" tidak mencukupi! Tersedia: ' + before + ', Keluar: ' + entry.keluar);
+          return;
+        }
+        var after = afterOut + entry.masuk;
+        stockMap[key] = after;
+        newProdItems.push({
+          itemId: entry.item.id, kode: entry.item.kode, nama: entry.item.nama, satuan: entry.item.satuan, lokasi: entry.item.lokasi,
+          stokSebelum: before, keluar: entry.keluar, masuk: entry.masuk, stokSesudah: after
+        });
+        if (entry.keluar > 0) {
+          outItems.push({
+            itemId: entry.item.id, kode: entry.item.kode, nama: entry.item.nama, satuan: entry.item.satuan, lokasi: entry.item.lokasi,
+            qty: entry.keluar, stokSebelum: before, stokSesudah: afterOut
+          });
+        }
+        if (entry.masuk > 0) {
+          inItems.push({
+            itemId: entry.item.id, kode: entry.item.kode, nama: entry.item.nama, satuan: entry.item.satuan, lokasi: entry.item.lokasi,
+            qty: entry.masuk, stokSebelum: afterOut, stokSesudah: after
+          });
+        }
+      }
+
+      var oldNoDoc = oldProd.noDokumen;
+      STATE.items.forEach(function(it) {
+        var v = stockMap[it.id || it.nama];
+        it.stok = v;
+        it.status = v === 0 ? 'HABIS' : (v <= 5 ? 'MENIPIS' : 'AMAN');
+      });
+      oldProd.tanggal = newTgl;
+      oldProd.noDokumen = newNoDoc;
+      oldProd.keterangan = newKet;
+      oldProd.items = newProdItems;
+
+      STATE.transactions = STATE.transactions.filter(function(tx) {
+        return !(tx.noDokumen === oldNoDoc && (tx.keterangan || '').indexOf('Produksi (') === 0);
+      });
+      if (outItems.length > 0) {
+        STATE.transactions.push({
+          id: 'tx_' + newNoDoc + '__OUT', type: 'OUT', tanggal: newTgl, noDokumen: newNoDoc,
+          keterangan: newKetRaw ? ('Produksi (Keluar): ' + newKetRaw) : 'Produksi (Keluar Bahan)',
+          createdAt: new Date().toISOString(), items: outItems
+        });
+      }
+      if (inItems.length > 0) {
+        STATE.transactions.push({
+          id: 'tx_' + newNoDoc + '__IN', type: 'IN', tanggal: newTgl, noDokumen: newNoDoc,
+          keterangan: newKetRaw ? ('Produksi (Masuk): ' + newKetRaw) : 'Produksi (Hasil Jadi)',
+          createdAt: new Date().toISOString(), items: inItems
+        });
+      }
+
+      STATE.isEditingProdModal = false;
+      saveToLocalCache();
+      renderAllViews();
+      renderProdModalContent();
+      showToast('Produksi ' + newNoDoc + ' berhasil diperbarui!');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        document.getElementById('syncBadge').innerText = 'Saving...';
+        google.script.run
+          .withSuccessHandler(function(data) {
+            document.getElementById('syncBadge').innerText = 'Ready';
+            if (data && data.items) {
+              STATE.items = data.items;
+              STATE.transactions = data.transactions || [];
+              STATE.productions = data.productions || [];
+              STATE.nextDocNumber = data.nextDocNumber || generateNextDocNumber();
+              STATE.nextProdDocNumber = data.nextProdDocNumber || generateNextProdDocNumber();
+              saveToLocalCache();
+              updateDocNumbers();
+              renderAllViews();
+            }
+          })
+          .withFailureHandler(function(err) {
+            document.getElementById('syncBadge').innerText = 'Sync Error';
+            alert('Gagal update produksi di sheet: ' + err.toString());
+          })
+          .apiUpdateProduction({
+            prodId: oldProd.id, oldNoDokumen: oldNoDoc, tanggal: newTgl, noDokumen: newNoDoc, keterangan: newKetRaw, items: newProdItems
+          });
+      }
+    }
+
+    function exportProduksiExcel() {
+      if (typeof XLSX === 'undefined') return;
+      var list = getFilteredProductions();
+      var rows = [
+        ['No', 'Tanggal', 'No Document', 'Keterangan', 'Kode', 'Nama Barang', 'Satuan', 'Lokasi', 'Stok Terkini', 'Keluar', 'Masuk', 'Stok Akhir']
+      ];
+      var no = 1;
+      list.forEach(function(p) {
+        (p.items || []).forEach(function(it) {
+          rows.push([
+            no++, formatDateDDMMYYYY(p.tanggal), p.noDokumen, p.keterangan || '-',
+            it.kode || '-', it.nama, it.satuan || 'Pcs', it.lokasi || '-',
+            Number(it.stokSebelum) || 0, Number(it.keluar) || 0, Number(it.masuk) || 0, Number(it.stokSesudah) || 0
+          ]);
+        });
+      });
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Data_Produksi');
+      XLSX.writeFile(wb, 'Laporan_Produksi_Gudang_Repack.xlsx');
+      showToast('Laporan produksi berhasil diekspor!');
+    }
+
+    // ================= EKSPOR EXCEL (.XLSX) =================
+    function exportKatalogExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert('Pustaka Excel belum siap. Coba beberapa saat lagi.');
+        return;
+      }
+      var rows = [
+        ['No', 'Kode Barang', 'Nama Barang', 'Satuan', 'Lokasi Gudang', 'Stok Saat Ini', 'Status']
+      ];
+      STATE.items.forEach(function(it, idx) {
+        rows.push([
+          idx + 1,
+          it.kode || '',
+          it.nama,
+          it.satuan || 'Pcs',
+          it.lokasi || '',
+          Number(it.stok) || 0,
+          it.status || 'AMAN'
+        ]);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Stok_Gudang');
+      XLSX.writeFile(wb, 'Katalog_Stok_Gudang_Repack.xlsx');
+      showToast('Katalog berhasil diekspor ke Excel!');
+    }
+
+    function exportRiwayatExcel() {
+      if (typeof XLSX === 'undefined') return;
+      var flattened = getFlattenedTransactions();
+      var rows = [
+        ['No', 'Tanggal', 'No Document', 'Keterangan', 'Tipe', 'Kode Barang', 'Nama Barang', 'Satuan', 'Lokasi', 'Masuk', 'Keluar', 'Stok Sblm', 'Stok Saat Ini']
+      ];
+      flattened.forEach(function(r, idx) {
+        rows.push([
+          idx + 1,
+          r.tanggal,
+          r.noDokumen,
+          r.keterangan,
+          r.type,
+          r.kode || '',
+          r.nama,
+          r.satuan || 'Pcs',
+          r.lokasi || '',
+          r.type === 'IN' ? r.qty : 0,
+          r.type === 'OUT' ? r.qty : 0,
+          r.stokSebelum,
+          r.stokSesudah
+        ]);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Riwayat_Stok');
+      XLSX.writeFile(wb, 'Laporan_Riwayat_Stok_Repack.xlsx');
+      showToast('Laporan riwayat stok berhasil diekspor!');
+    }
+
+    function exportKartuStokExcel() {
+      if (typeof XLSX === 'undefined' || !STATE.selectedItemForKartu) return;
+      var it = STATE.selectedItemForKartu;
+      var rows = [
+        ['KARTU STOK BARANG: ' + it.nama],
+        ['Kode: ' + (it.kode || '-'), 'Satuan: ' + (it.satuan || 'Pcs'), 'Lokasi: ' + (it.lokasi || '-'), 'Stok Terkini: ' + it.stok],
+        [],
+        ['No', 'Tanggal', 'No Dokumen', 'Keterangan', 'Masuk (+)', 'Keluar (-)', 'Stok Sebelum', 'Saldo Akhir']
+      ];
+
+      var ledger = [];
+      STATE.transactions.forEach(function(tx) {
+        (tx.items || []).forEach(function(entry) {
+          if (entry.nama === it.nama || entry.itemId === it.id) {
+            ledger.push({
+              tanggal: tx.tanggal,
+              noDokumen: tx.noDokumen,
+              keterangan: tx.keterangan || '-',
+              masuk: tx.type === 'IN' ? entry.qty : 0,
+              keluar: tx.type === 'OUT' ? entry.qty : 0,
+              stokSebelum: entry.stokSebelum,
+              stokSesudah: entry.stokSesudah
+            });
+          }
+        });
+      });
+
+      ledger.sort(function(a, b) { return a.tanggal.localeCompare(b.tanggal); });
+      ledger.forEach(function(r, idx) {
+        rows.push([
+          idx + 1,
+          r.tanggal,
+          r.noDokumen,
+          r.keterangan,
+          r.masuk,
+          r.keluar,
+          r.stokSebelum,
+          r.stokSesudah
+        ]);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Kartu_Stok');
+      XLSX.writeFile(wb, 'Kartu_Stok_' + (it.kode || it.nama).replace(/[^a-zA-Z0-9]/g, '_') + '.xlsx');
+      showToast('Kartu stok ' + it.nama + ' berhasil diekspor!');
+    }
+
+    // ================= HEADER SEARCH & MODAL =================
+    function handleHeaderSearch(val) {
+      var q = val.toLowerCase().trim();
+      var container = document.getElementById('headerSearchResults');
+      if (!q) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+
+      var matches = STATE.items.filter(function(i) {
+        return (i.nama || '').toLowerCase().indexOf(q) !== -1 || (i.kode || '').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 10);
+
+      if (matches.length === 0) {
+        container.innerHTML = '<div class="p-2.5 text-xs text-gray-400">Tidak ada barang yang cocok</div>';
+        container.classList.remove('hidden');
+        return;
+      }
+
+      var html = '';
+      matches.forEach(function(item) {
+        html += '<div class="autocomplete-item" onclick="openQuickDetailModal(\'' + escapeJsArg(item.id || item.nama) + '\')">' +
+          '<div>' +
+            '<span class="font-mono font-bold text-emerald-800 mr-1.5">' + escapeHtml(item.kode || '-') + '</span>' +
+            '<span class="font-bold text-gray-900">' + escapeHtml(item.nama) + '</span>' +
+            '<div class="text-[10px] text-gray-500">' + escapeHtml(item.lokasi || '-') + '</div>' +
+          '</div>' +
+          '<div class="text-right">' +
+            '<span class="font-black ' + (item.stok === 0 ? 'text-rose-600' : 'text-emerald-700') + '">Stok: ' + item.stok + '</span> ' +
+            '<span class="text-[10px] text-gray-500">' + escapeHtml(item.satuan || 'Pcs') + '</span>' +
+          '</div>' +
+        '</div>';
+      });
+
+      container.innerHTML = html;
+      container.classList.remove('hidden');
+    }
+
+    function openQuickDetailModal(identifier) {
+      var item = findItemByIdOrName(identifier, identifier);
+      if (!item) return;
+
+      STATE.quickDetailItem = item;
+      document.getElementById('qdNama').innerText = item.nama;
+      document.getElementById('qdKode').innerText = item.kode || '-';
+      document.getElementById('qdSatuan').innerText = item.satuan || 'Pcs';
+      document.getElementById('qdLokasi').innerText = item.lokasi || '-';
+      document.getElementById('qdStok').innerText = (item.stok || 0) + ' ' + (item.satuan || 'Pcs');
+
+      document.getElementById('headerSearchResults').classList.add('hidden');
+      document.getElementById('quickDetailModal').classList.remove('hidden');
+    }
+
+    function closeQuickDetailModal() {
+      document.getElementById('quickDetailModal').classList.add('hidden');
+    }
+
+    function openKartuFromQuickDetail() {
+      closeQuickDetailModal();
+      if (STATE.quickDetailItem) {
+        openKartuForItem(STATE.quickDetailItem.id || STATE.quickDetailItem.nama);
+      }
+    }
+
+    // ================= HELPERS =================
+    function findItemByIdOrName(id, name) {
+      if (id) {
+        for (var i = 0; i < STATE.items.length; i++) {
+          if (STATE.items[i].id === id) return STATE.items[i];
+        }
+      }
+      if (name) {
+        for (var j = 0; j < STATE.items.length; j++) {
+          if (STATE.items[j].nama.toLowerCase() === name.toLowerCase()) return STATE.items[j];
+        }
+      }
+      return null;
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escapeJsArg(str) {
+      if (str === null || str === undefined) return '';
+      return escapeHtml(String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+    }
+
+    function formatDateDDMMYYYY(iso) {
+      if (!iso) return '-';
+      var parts = String(iso).split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        return parts[2] + '-' + parts[1] + '-' + parts[0];
+      }
+      return String(iso);
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      var m = document.getElementById('toastMsg');
+      m.innerText = msg;
+      t.classList.remove('hidden');
+      setTimeout(function() {
+        t.classList.add('hidden');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>

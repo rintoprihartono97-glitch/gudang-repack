@@ -39,6 +39,7 @@ import {
   Check,
   ArrowRight
 } from 'lucide-react';
+import { AppsScriptModal } from '../Common/AppsScriptModal';
 import { User } from 'firebase/auth';
 
 const STORAGE_KEY_SPREADSHEET_ID = 'gudang_repack_active_spreadsheet_id';
@@ -50,6 +51,7 @@ export const BackupRestoreView: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showClearTxConfirm, setShowClearTxConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAppsScriptModalOpen, setIsAppsScriptModalOpen] = useState(false);
 
   // Google Auth & Sheets states
   const [googleUser, setGoogleUser] = useState<User | null>(null);
@@ -511,6 +513,34 @@ export const BackupRestoreView: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* HIGHLIGHT BANNER: GOOGLE APPS SCRIPT WEB APP READY */}
+      <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 rounded-2xl p-5 text-white shadow-md border border-emerald-600/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 bg-emerald-500/20 text-emerald-300 rounded-lg border border-emerald-400/30">
+              <FileCode className="w-5 h-5" />
+            </span>
+            <h2 className="text-base sm:text-lg font-black tracking-tight">
+              Kode Google Apps Script (Code.gs & Index.html)
+            </h2>
+            <span className="bg-emerald-400 text-emerald-950 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase">
+              Anti-Delay
+            </span>
+          </div>
+          <p className="text-xs text-emerald-200/90 max-w-xl">
+            Tersedia file siap salin & tempel untuk dipasang langsung ke menu <i>Ekstensi &rarr; Apps Script</i> di spreadsheet Anda. Terhubung otomatis, tanpa freeze/delay.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsAppsScriptModalOpen(true)}
+          className="flex-shrink-0 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-emerald-950 rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2"
+        >
+          <FileCode className="w-4 h-4" />
+          <span>Lihat & Salin Kode</span>
+        </button>
+      </div>
 
       {/* SECTION 1: GOOGLE SHEETS CONNECTION & SYNC */}
       <div className="bg-white rounded-2xl shadow-xs border border-emerald-300 overflow-hidden">
@@ -1038,6 +1068,12 @@ export const BackupRestoreView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Kode Google Apps Script */}
+      <AppsScriptModal
+        isOpen={isAppsScriptModalOpen}
+        onClose={() => setIsAppsScriptModalOpen(false)}
+      />
     </div>
   );
 };

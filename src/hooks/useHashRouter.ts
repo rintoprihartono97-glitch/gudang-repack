@@ -19,9 +19,11 @@ export function parseHash(hashString: string): RouteState {
     'dashboard',
     'barang-masuk',
     'barang-keluar',
+    'produksi',
     'barang-baru',
     'kelola-barang',
     'riwayat-stok',
+    'daftar-dokumen',
     'kartu-stok',
     'backup-restore'
   ];

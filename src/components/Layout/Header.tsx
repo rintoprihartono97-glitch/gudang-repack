@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavLink } from '../Navigation/NavLink';
 import { ItemAutocomplete } from '../Common/ItemAutocomplete';
 import { ItemQuickDetailModal } from '../Common/ItemQuickDetailModal';
+import { AppsScriptModal } from '../Common/AppsScriptModal';
 import { Item, AppRoute } from '../../types';
 import { 
   Home, 
@@ -15,7 +16,9 @@ import {
   FileEdit,
   ClipboardList,
   PackageSearch,
-  Database
+  Database,
+  FileCode,
+  Repeat
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -32,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [searchVal, setSearchVal] = useState('');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAppsScriptModalOpen, setIsAppsScriptModalOpen] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement>(null);
 
   const menuItems = [
@@ -57,35 +61,42 @@ export const Header: React.FC<HeaderProps> = ({
       desc: 'Pencatatan mutasi pengeluaran'
     },
     {
-      label: '3. Input Barang Baru',
+      label: '3. Produksi (Kemas Ulang)',
+      href: '#/produksi',
+      route: 'produksi' as AppRoute,
+      icon: Repeat,
+      desc: 'Produksi ulang & konversi kemasan'
+    },
+    {
+      label: '4. Input Barang Baru',
       href: '#/barang-baru',
       route: 'barang-baru' as AppRoute,
       icon: PlusCircle,
       desc: 'Daftarkan item / SKU baru'
     },
     {
-      label: '4. Edit / Hapus Barang',
+      label: '5. Edit / Hapus Barang',
       href: '#/kelola-barang',
       route: 'kelola-barang' as AppRoute,
       icon: FileEdit,
       desc: 'Manajemen katalog & penyesuaian'
     },
     {
-      label: '5. Laporan / Riwayat Stok',
+      label: '6. Laporan / Riwayat Stok',
       href: '#/riwayat-stok',
       route: 'riwayat-stok' as AppRoute,
       icon: ClipboardList,
       desc: 'Log keluar masuk per tanggal'
     },
     {
-      label: '6. Kartu Stok Masing-masing',
+      label: '7. Kartu Stok Masing-masing',
       href: '#/kartu-stok',
       route: 'kartu-stok' as AppRoute,
       icon: PackageSearch,
       desc: 'Buku besar per item barang'
     },
     {
-      label: '7. Backup & Google Sheets',
+      label: '8. Backup & Google Sheets',
       href: '#/backup-restore',
       route: 'backup-restore' as AppRoute,
       icon: Database,
@@ -151,8 +162,19 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Pojok Kanan Atas: Tombol Kembali/Undo & Hamburger Dropdown Popover */}
+          {/* Pojok Kanan Atas: Tombol Kode Apps Script, Tombol Kembali/Undo & Hamburger Dropdown Popover */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Tombol Kode Apps Script */}
+            <button
+              type="button"
+              onClick={() => setIsAppsScriptModalOpen(true)}
+              title="Lihat & Salin Kode Google Apps Script (Code.gs & Index.html)"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors border border-emerald-400/40"
+            >
+              <FileCode className="w-4 h-4 text-emerald-100" />
+              <span className="hidden sm:inline">Kode Apps Script</span>
+            </button>
+
             {/* Tombol Undo / Kembali */}
             <button
               type="button"
@@ -240,6 +262,21 @@ export const Header: React.FC<HeaderProps> = ({
                     })}
                   </div>
 
+                  {/* Tombol Cepat Kode Google Apps Script di Menu */}
+                  <div className="p-2 border-t border-gray-100 bg-emerald-50/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsAppsScriptModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                    >
+                      <FileCode className="w-4 h-4 text-emerald-200" />
+                      <span>Salin Kode Google Apps Script</span>
+                    </button>
+                  </div>
+
                   <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-[10px] text-gray-400 text-center rounded-b-2xl">
                     Klik kanan / tekan lama untuk buka di tab baru
                   </div>
@@ -266,6 +303,12 @@ export const Header: React.FC<HeaderProps> = ({
       <ItemQuickDetailModal
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
+      />
+
+      {/* Modal Kode Google Apps Script (Code.gs & Index.html) */}
+      <AppsScriptModal
+        isOpen={isAppsScriptModalOpen}
+        onClose={() => setIsAppsScriptModalOpen(false)}
       />
     </>
   );

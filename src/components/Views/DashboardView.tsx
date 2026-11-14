@@ -13,12 +13,11 @@ import {
   TrendingUp, 
   Layers, 
   History, 
-  CheckCircle2, 
   ChevronRight,
   PlusCircle,
   Database,
   Search,
-  Filter
+  Repeat
 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
@@ -284,9 +283,9 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 4: Total Riwayat Transaksi */}
+        {/* Card 4: Total Riwayat Transaksi -> Buka Jendela Tampilan Daftar Document */}
         <NavLink
-          href="#/riwayat-stok"
+          href="#/daftar-dokumen"
           className="rounded-2xl p-5 border bg-white hover:border-emerald-300 text-gray-900 border-gray-200 transition-all duration-200 shadow-xs hover:shadow-lg hover:-translate-y-1 flex flex-col justify-between group"
         >
           <div className="flex items-center justify-between">
@@ -304,7 +303,7 @@ export const DashboardView: React.FC = () => {
             </span>
           </div>
           <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-emerald-700 font-medium">
-            <span>Buka Riwayat Lengkap</span>
+            <span>Lihat Daftar Document</span>
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </NavLink>
@@ -321,7 +320,9 @@ export const DashboardView: React.FC = () => {
                   {filterMode === 'EMPTY' && 'Daftar Barang Stok Kosong (0)'}
                   {filterMode === 'LOCATION' && `Daftar Barang di ${selectedLocation || 'Lokasi'}`}
                 </span>
-                <span className="text-xs text-gray-500">({displayedItems.length} item ditemukan)</span>
+                <span className="text-xs text-gray-500">
+                  ({displayedItems.length} item ditemukan)
+                </span>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mt-1">
                 Rincian Data dari Kartu Statistik
@@ -433,7 +434,7 @@ export const DashboardView: React.FC = () => {
       )}
 
       {/* Quick Navigation Cards to Key Menus with Hover Animations */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <NavLink
           href="#/barang-masuk"
           className="group p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center hover:-translate-y-1"
@@ -454,6 +455,17 @@ export const DashboardView: React.FC = () => {
           </div>
           <span className="text-xs font-bold text-gray-800 group-hover:text-white">Input Keluar</span>
           <span className="text-[10px] text-gray-400 group-hover:text-rose-100 mt-0.5">Barang Keluar</span>
+        </NavLink>
+
+        <NavLink
+          href="#/produksi"
+          className="group p-4 bg-white hover:bg-emerald-700 rounded-2xl border border-emerald-100 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col items-center text-center hover:-translate-y-1"
+        >
+          <div className="p-3 bg-emerald-50 group-hover:bg-emerald-800 rounded-xl text-emerald-700 group-hover:text-white transition-colors mb-2">
+            <Repeat className="w-5 h-5" />
+          </div>
+          <span className="text-xs font-bold text-gray-800 group-hover:text-white">Produksi</span>
+          <span className="text-[10px] text-gray-400 group-hover:text-emerald-100 mt-0.5">Kemas Ulang</span>
         </NavLink>
 
         <NavLink
